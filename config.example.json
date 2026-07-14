@@ -1,5 +1,6 @@
 {
   "rpcUrl": "https://your-solana-rpc.example",
+  "useRpcLimiter": false,
   "profiles": {
     "mud-ledger": {
       "address": "MUD_LEDGER_PUBLIC_ADDRESS",

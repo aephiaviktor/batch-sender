@@ -82,7 +82,7 @@ function publicProfileState(config) {
     return {
       ...profile,
       address,
-      configured: Boolean(address && config.rpcUrl),
+      configured: Boolean(address && (config.rpcUrl || config.useRpcLimiter)),
       derivationPath: profile.kind === 'ledger' ? String(stored.derivationPath || '').trim() : '',
     };
   });
@@ -98,6 +98,7 @@ async function getState() {
     recipients: await loadRecipients(userDataPath),
     hotWallet: await getHotWalletStatus(userDataPath),
     rpcUrl: config.rpcUrl,
+    useRpcLimiter: config.useRpcLimiter,
     rpcConfigured: Boolean(config.rpcUrl),
     configPath: path.join(userDataPath, 'config.json'),
     aephia,
@@ -191,7 +192,7 @@ async function getProfileContext(profileId) {
   } catch {
     throw new Error(`${profile.name} public address is not configured.`);
   }
-  return { profile, config, owner, connection: createConnection(config.rpcUrl) };
+  return { profile, config, owner, connection: createConnection(config.rpcUrl, config.useRpcLimiter, profile.id) };
 }
 
 async function refreshBalances(profileId) {

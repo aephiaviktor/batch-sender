@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { validateAephiaKey } = require('../lib/aephia-auth');
+const { normalizeAephiaKey, validateAephiaKey } = require('../lib/aephia-auth');
 
 test('accepts a 204 Aephia token validation response with bearer auth', async () => {
   let request;
@@ -18,4 +18,13 @@ test('accepts a 204 Aephia token validation response with bearer auth', async ()
 test('rejects missing and unauthorized Aephia API keys', async () => {
   await assert.rejects(() => validateAephiaKey('', async () => ({ status: 204 })), /required/);
   await assert.rejects(() => validateAephiaKey('bad', async () => ({ status: 401 })), /rejected/);
+});
+
+test('normalizes API keys copied from env files or authorization headers', () => {
+  assert.equal(normalizeAephiaKey('AEPHIA_API_KEY="abc-123"'), 'abc-123');
+  assert.equal(normalizeAephiaKey('Bearer abc-123'), 'abc-123');
+});
+
+test('accepts a 200 Aephia token validation response', async () => {
+  await validateAephiaKey('valid', async () => ({ status: 200 }));
 });
