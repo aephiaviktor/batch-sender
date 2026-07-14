@@ -1,6 +1,6 @@
 {
   "name": "batch-sender",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Batch sender for Star Atlas raw materials and components",
   "main": "electron/main.js",

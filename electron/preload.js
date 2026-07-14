@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('batchSender', Object.freeze({
   getState: () => ipcRenderer.invoke('batch:get-state'),
   getBalances: (profileId) => ipcRenderer.invoke('batch:get-balances', { profileId }),
   saveRecipient: (payload) => ipcRenderer.invoke('batch:save-recipient', payload),
+  saveSettings: (payload) => ipcRenderer.invoke('batch:save-settings', payload),
   importHotWallet: () => ipcRenderer.invoke('batch:import-hot-wallet'),
   preview: (payload) => ipcRenderer.invoke('batch:preview', payload),
   send: (previewId) => ipcRenderer.invoke('batch:send', { previewId }),

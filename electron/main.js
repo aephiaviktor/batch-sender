@@ -10,7 +10,7 @@ const { createConnection, getEligibleBalances } = require('../lib/balances');
 const { parseTokenAmount, formatBaseUnits } = require('../lib/amounts');
 const { getHotWalletStatus, importHotWallet, loadHotWallet } = require('../lib/hot-wallet-store');
 const { signTransactionWithLedger } = require('../lib/ledger-signer');
-const { loadPublicConfig, loadRecipients, saveRecipient } = require('../lib/local-store');
+const { loadPublicConfig, loadRecipients, savePublicConfig, saveRecipient } = require('../lib/local-store');
 const { planBatchTransactions } = require('../lib/planner');
 const { SENDER_PROFILES, getSenderProfile } = require('../lib/profiles');
 
@@ -87,6 +87,7 @@ async function getState() {
     profiles: publicProfileState(config),
     recipients: await loadRecipients(userDataPath),
     hotWallet: await getHotWalletStatus(userDataPath),
+    rpcUrl: config.rpcUrl,
     rpcConfigured: Boolean(config.rpcUrl),
     configPath: path.join(userDataPath, 'config.json'),
   };
@@ -418,6 +419,10 @@ ipcMain.handle('batch:save-recipient', safeResult(async (payload) => ({
   ok: true,
   recipients: await saveRecipient(app.getPath('userData'), payload),
 })));
+ipcMain.handle('batch:save-settings', safeResult(async (payload) => {
+  await savePublicConfig(app.getPath('userData'), payload);
+  return getState();
+}));
 ipcMain.handle('batch:import-hot-wallet', safeResult(chooseAndImportHotWallet));
 ipcMain.handle('batch:preview', safeResult(previewBatch));
 ipcMain.handle('batch:send', async (event, payload) => {

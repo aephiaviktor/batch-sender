@@ -27,11 +27,11 @@ Transactions are built, reviewed, signed, broadcast, and confirmed locally on th
 
 The selected sender currently pays transaction fees and recipient ATA rent. Native Windows hardware and real-transfer verification are still required before release.
 
-## Local configuration
+## Wallet setup
 
-Batch Sender reads public configuration from Electron's per-user `config.json`. The app displays the exact location when a profile is not configured. Start from `config.example.json`.
+Open **Wallet settings** inside the app to configure the Solana RPC URL, the three Ledger public addresses and derivation paths, and the GM Market Bot public address. These public settings are stored locally in Electron's per-user data folder.
 
-Do not put a wallet secret in this file. Hot-wallet secret storage will use a Windows-protected mechanism and remain in the Electron main process.
+Do not enter a wallet secret in Wallet settings. The GM hot-wallet signing key has a separate native file-import flow, is protected by Windows DPAPI, and remains in the Electron main process.
 
 ## Development
 

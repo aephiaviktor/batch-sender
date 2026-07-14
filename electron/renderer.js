@@ -24,10 +24,24 @@ const els = {
   confirmSend: document.getElementById('confirm-send-btn'),
   closePreview: document.getElementById('close-preview-btn'),
   cancelPreview: document.getElementById('cancel-preview-btn'),
+  settingsButton: document.getElementById('settings-btn'),
+  settingsModal: document.getElementById('settings-modal'),
+  closeSettings: document.getElementById('close-settings-btn'),
+  cancelSettings: document.getElementById('cancel-settings-btn'),
+  saveSettings: document.getElementById('save-settings-btn'),
+  settingsMessage: document.getElementById('settings-message'),
+  settingsRpc: document.getElementById('settings-rpc'),
+  settingsMudAddress: document.getElementById('settings-mud-address'),
+  settingsMudPath: document.getElementById('settings-mud-path'),
+  settingsOniAddress: document.getElementById('settings-oni-address'),
+  settingsOniPath: document.getElementById('settings-oni-path'),
+  settingsUsturAddress: document.getElementById('settings-ustur-address'),
+  settingsUsturPath: document.getElementById('settings-ustur-path'),
+  settingsGmAddress: document.getElementById('settings-gm-address'),
 };
 
 const state = {
-  profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '',
+  profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '', rpcUrl: '',
   hotWallet: { configured: false, publicKey: '', protection: '' }, currentPreview: null,
 };
 
@@ -46,6 +60,67 @@ function formatAmount(value) {
 
 function selectedProfile() {
   return state.profiles.find((profile) => profile.id === state.selectedProfileId) || null;
+}
+
+function profileById(id) {
+  return state.profiles.find((profile) => profile.id === id) || {};
+}
+
+function openSettings() {
+  const mud = profileById('mud-ledger');
+  const oni = profileById('oni-ledger');
+  const ustur = profileById('ustur-ledger');
+  const gm = profileById('gm-hot-wallet');
+  els.settingsRpc.value = state.rpcUrl || '';
+  els.settingsMudAddress.value = mud.address || '';
+  els.settingsMudPath.value = mud.derivationPath || "44'/501'/0'";
+  els.settingsOniAddress.value = oni.address || '';
+  els.settingsOniPath.value = oni.derivationPath || "44'/501'/0'";
+  els.settingsUsturAddress.value = ustur.address || '';
+  els.settingsUsturPath.value = ustur.derivationPath || "44'/501'/0'";
+  els.settingsGmAddress.value = gm.address || '';
+  els.settingsMessage.hidden = true;
+  els.settingsMessage.classList.remove('error');
+  els.settingsModal.hidden = false;
+}
+
+async function saveSettings() {
+  if (state.busy) return;
+  state.busy = true;
+  els.saveSettings.disabled = true;
+  els.closeSettings.disabled = true;
+  els.cancelSettings.disabled = true;
+  els.settingsMessage.hidden = false;
+  els.settingsMessage.classList.remove('error');
+  els.settingsMessage.textContent = 'Validating and saving settings…';
+  const result = await window.batchSender.saveSettings({
+    rpcUrl: els.settingsRpc.value,
+    profiles: {
+      'mud-ledger': { address: els.settingsMudAddress.value, derivationPath: els.settingsMudPath.value },
+      'oni-ledger': { address: els.settingsOniAddress.value, derivationPath: els.settingsOniPath.value },
+      'ustur-ledger': { address: els.settingsUsturAddress.value, derivationPath: els.settingsUsturPath.value },
+      'gm-hot-wallet': { address: els.settingsGmAddress.value },
+    },
+  });
+  state.busy = false;
+  els.saveSettings.disabled = false;
+  els.closeSettings.disabled = false;
+  els.cancelSettings.disabled = false;
+  if (!result?.ok) {
+    els.settingsMessage.classList.add('error');
+    els.settingsMessage.textContent = result?.message || 'Settings could not be saved.';
+    return;
+  }
+  state.profiles = result.profiles || [];
+  state.rpcUrl = result.rpcUrl || '';
+  state.hotWallet = result.hotWallet || state.hotWallet;
+  state.configPath = result.configPath || state.configPath;
+  els.settingsModal.hidden = true;
+  state.balances = [];
+  renderProfiles();
+  renderBalances();
+  els.status.textContent = 'Wallet settings saved locally.';
+  await loadBalances();
 }
 
 function renderProfiles() {
@@ -171,7 +246,7 @@ async function loadBalances() {
     state.balances = [];
     renderBalances();
     els.configMessage.hidden = false;
-    els.configMessage.textContent = `Add this profile's public address and the RPC URL to ${state.configPath || 'the local config file'}.`;
+    els.configMessage.textContent = 'Open Wallet settings to add this profile’s public address and the Solana RPC URL.';
     return;
   }
   els.configMessage.hidden = true;
@@ -354,6 +429,7 @@ async function initialize() {
   state.profiles = result.profiles || [];
   state.recipients = result.recipients || [];
   state.configPath = result.configPath || '';
+  state.rpcUrl = result.rpcUrl || '';
   state.hotWallet = result.hotWallet || state.hotWallet;
   state.selectedProfileId = state.profiles[0]?.id || '';
   renderProfiles();
@@ -362,6 +438,11 @@ async function initialize() {
 }
 
 els.refresh.addEventListener('click', loadBalances);
+els.settingsButton.addEventListener('click', openSettings);
+els.saveSettings.addEventListener('click', saveSettings);
+for (const button of [els.closeSettings, els.cancelSettings]) button.addEventListener('click', () => {
+  if (!state.busy) els.settingsModal.hidden = true;
+});
 els.copySender.addEventListener('click', async () => { const value = selectedProfile()?.address; if (value) await navigator.clipboard.writeText(value); });
 els.importHotWallet.addEventListener('click', async () => {
   state.busy = true;
