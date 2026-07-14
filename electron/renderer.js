@@ -36,7 +36,6 @@ const els = {
   settingsUsturAddress: document.getElementById('settings-ustur-address'),
   settingsGmAddress: document.getElementById('settings-gm-address'),
   settingsAephiaKey: document.getElementById('settings-aephia-key'),
-  settingsUseRpcLimiter: document.getElementById('settings-use-rpc-limiter'),
   settingsGrid: document.getElementById('settings-grid'),
   toggleSensitive: document.getElementById('toggle-sensitive-btn'),
   updateButton: document.getElementById('update-btn'),
@@ -48,7 +47,7 @@ const els = {
 };
 
 const state = {
-  profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '', rpcUrl: '', useRpcLimiter: false,
+  profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '', rpcUrl: '',
   hotWallet: { configured: false, publicKey: '', protection: '' }, currentPreview: null,
   aephia: { configured: false, valid: false, message: 'Aephia API key is required.' },
 };
@@ -80,7 +79,6 @@ function openSettings() {
   const ustur = profileById('ustur-ledger');
   const gm = profileById('gm-hot-wallet');
   els.settingsRpc.value = state.rpcUrl || '';
-  els.settingsUseRpcLimiter.checked = state.useRpcLimiter;
   els.settingsMudAddress.value = mud.address || '';
   els.settingsOniAddress.value = oni.address || '';
   els.settingsUsturAddress.value = ustur.address || '';
@@ -129,7 +127,6 @@ async function saveSettings() {
   els.settingsMessage.textContent = 'Validating and saving settings…';
   const result = await window.batchSender.saveSettings({
     rpcUrl: els.settingsRpc.value,
-    useRpcLimiter: els.settingsUseRpcLimiter.checked,
     profiles: {
       'mud-ledger': { address: els.settingsMudAddress.value },
       'oni-ledger': { address: els.settingsOniAddress.value },
@@ -149,7 +146,6 @@ async function saveSettings() {
   }
   state.profiles = result.profiles || [];
   state.rpcUrl = result.rpcUrl || '';
-  state.useRpcLimiter = Boolean(result.useRpcLimiter);
   state.hotWallet = result.hotWallet || state.hotWallet;
   state.aephia = result.aephia || state.aephia;
   state.configPath = result.configPath || state.configPath;
@@ -469,7 +465,6 @@ async function initialize() {
   state.recipients = result.recipients || [];
   state.configPath = result.configPath || '';
   state.rpcUrl = result.rpcUrl || '';
-  state.useRpcLimiter = Boolean(result.useRpcLimiter);
   state.hotWallet = result.hotWallet || state.hotWallet;
   state.aephia = result.aephia || state.aephia;
   state.selectedProfileId = state.profiles[0]?.id || '';

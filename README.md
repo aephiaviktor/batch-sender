@@ -29,7 +29,7 @@ The selected sender currently pays transaction fees and recipient ATA rent. Nati
 
 ## Wallet setup
 
-Open **Wallet settings** inside the app to configure the Solana RPC URL, optionally use the shared RPC Limiter, add the three Ledger public addresses, and add the GM Market Bot public address. Ledger derivation paths are detected automatically when signing. These public settings are stored locally in Electron's per-user data folder.
+Open **Wallet settings** inside the app to configure the Solana RPC URL, add the three Ledger public addresses, and add the GM Market Bot public address. Ledger derivation paths are detected automatically when signing. These public settings are stored locally in Electron's per-user data folder.
 
 The settings dialog hides the Aephia API key and RPC URL by default; use **Show sensitive** to reveal them temporarily. Aephia keys copied as a bare token, `Bearer …`, or `AEPHIA_API_KEY=…` are normalized before validation. The app accepts the API's successful HTTP 200 and 204 validation responses.
 

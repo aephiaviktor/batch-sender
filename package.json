@@ -1,6 +1,6 @@
 {
   "name": "batch-sender",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Batch sender for Star Atlas raw materials and components",
   "main": "electron/main.js",
@@ -15,8 +15,7 @@
     "@ledgerhq/hw-transport-node-hid": "^6.33.5",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "bs58": "^6.0.0",
-    "rpc_limiter": "https://github.com/aephiaviktor/rpc-limiter/archive/refs/heads/main.tar.gz"
+    "bs58": "^6.0.0"
   },
   "devDependencies": {
     "electron": "^42.1.0"

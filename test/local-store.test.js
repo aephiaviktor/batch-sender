@@ -15,7 +15,6 @@ test('saves and reloads public wallet settings without secret material', async (
 
   await savePublicConfig(directory, {
     rpcUrl: 'https://rpc.example.test',
-    useRpcLimiter: true,
     profiles: {
       'mud-ledger': { address: addresses[0], derivationPath: "44'/501'/1'" },
       'oni-ledger': { address: addresses[1], derivationPath: "44'/501'/2'" },
@@ -26,7 +25,6 @@ test('saves and reloads public wallet settings without secret material', async (
 
   const stored = await loadPublicConfig(directory);
   assert.equal(stored.rpcUrl, 'https://rpc.example.test');
-  assert.equal(stored.useRpcLimiter, true);
   assert.equal(stored.profiles['mud-ledger'].address, addresses[0]);
   assert.equal(stored.profiles['mud-ledger'].derivationPath, "44'/501'/1'");
   assert.deepEqual(Object.keys(stored.profiles['gm-hot-wallet']), ['address']);
