@@ -1,0 +1,23 @@
+{
+  "name": "batch-sender",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Batch sender for Star Atlas raw materials and components",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check electron/main.js && node --check electron/preload.js && node --check electron/renderer.js && node --test",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@ledgerhq/hw-app-solana": "^7.10.5",
+    "@ledgerhq/hw-transport-node-hid": "^6.33.5",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0"
+  },
+  "devDependencies": {
+    "electron": "^42.1.0"
+  }
+}

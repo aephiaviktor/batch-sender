@@ -1,0 +1,20 @@
+{
+  "rpcUrl": "https://your-solana-rpc.example",
+  "profiles": {
+    "mud-ledger": {
+      "address": "MUD_LEDGER_PUBLIC_ADDRESS",
+      "derivationPath": "44'/501'/0'"
+    },
+    "oni-ledger": {
+      "address": "ONI_LEDGER_PUBLIC_ADDRESS",
+      "derivationPath": "44'/501'/0'"
+    },
+    "ustur-ledger": {
+      "address": "USTUR_LEDGER_PUBLIC_ADDRESS",
+      "derivationPath": "44'/501'/0'"
+    },
+    "gm-hot-wallet": {
+      "address": "GM_HOT_WALLET_PUBLIC_ADDRESS"
+    }
+  }
+}

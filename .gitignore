@@ -1,0 +1,15 @@
+node_modules/
+dist/
+release/
+out/
+*.log
+.env
+.env.*
+!.env.example
+
+# Local-only wallet/profile/recipient data
+config/local/
+data/
+recipients.json
+*.secret
+*.keypair.json

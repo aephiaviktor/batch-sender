@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Batch Sender</title>
+  <link rel="stylesheet" href="renderer.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">STAR ATLAS WALLET TOOL</p>
+        <h1>Batch Sender</h1>
+        <p class="subtitle">Review and send raw materials and components in one controlled flow.</p>
+      </div>
+      <span class="version">v0.1.0</span>
+    </header>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><span class="step">1</span><h2>Select sender</h2></div>
+        <button id="refresh-btn" class="button secondary" type="button">Refresh balances</button>
+      </div>
+      <div id="sender-grid" class="sender-grid"></div>
+      <div class="address-row">
+        <span>Sender address</span>
+        <code id="sender-address">Not configured</code>
+        <button id="copy-sender-btn" class="icon-button" type="button" title="Copy full sender address" disabled>Copy</button>
+        <button id="import-hot-wallet-btn" class="button secondary" type="button" hidden>Import protected signing key…</button>
+      </div>
+      <p id="config-message" class="notice" hidden></p>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><span class="step">2</span><h2>Choose recipient</h2></div></div>
+      <div class="recipient-grid">
+        <label>
+          <span>Saved recipient</span>
+          <select id="recipient-select"><option value="">Choose saved recipient</option></select>
+        </label>
+        <label class="wide">
+          <span>Recipient public key</span>
+          <input id="recipient-input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter a Solana public key">
+        </label>
+      </div>
+      <div class="save-recipient-row">
+        <label class="check"><input id="save-recipient-check" type="checkbox"> Save this recipient</label>
+        <input id="recipient-label" type="text" maxlength="80" placeholder="Recipient label" hidden>
+      </div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="section-heading">
+        <div><span class="step">3</span><h2>Enter amounts</h2></div>
+        <div class="table-actions">
+          <input id="search-input" class="search" type="search" placeholder="Filter tokens">
+          <button id="clear-btn" class="button secondary" type="button">Clear all</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Material / component</th><th>Available</th><th>Amount to send</th></tr></thead>
+          <tbody id="token-rows"><tr><td colspan="3" class="empty">Select a configured sender to load balances.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="action-bar">
+      <p id="status-message">Waiting for sender configuration.</p>
+      <button id="preview-btn" class="button primary" type="button" disabled>Preview batch</button>
+    </footer>
+  </main>
+
+  <div id="preview-modal" class="modal-backdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+      <div class="modal-header"><div><p class="eyebrow">FINAL REVIEW</p><h2 id="preview-title">Batch preview</h2></div><button id="close-preview-btn" class="icon-button" type="button">Close</button></div>
+      <div id="preview-content"></div>
+      <p id="preview-notice" class="notice"></p>
+      <label id="non-atomic-row" class="check non-atomic" hidden>
+        <input id="non-atomic-confirm" type="checkbox">
+        I understand this multi-transaction batch is not atomic.
+      </label>
+      <div class="modal-actions">
+        <button id="cancel-preview-btn" class="button secondary" type="button">Back</button>
+        <button id="confirm-send-btn" class="button primary" type="button">Confirm &amp; send</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
