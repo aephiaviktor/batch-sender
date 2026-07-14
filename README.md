@@ -40,3 +40,5 @@ npm install
 npm run check
 npm start
 ```
+
+On Windows, after `npm ci` has been run once, double-click `launch-batch-sender.vbs` to start Batch Sender without keeping a terminal window open. A shortcut to this file can be placed on the desktop.
