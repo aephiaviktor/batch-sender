@@ -32,11 +32,8 @@ const els = {
   settingsMessage: document.getElementById('settings-message'),
   settingsRpc: document.getElementById('settings-rpc'),
   settingsMudAddress: document.getElementById('settings-mud-address'),
-  settingsMudPath: document.getElementById('settings-mud-path'),
   settingsOniAddress: document.getElementById('settings-oni-address'),
-  settingsOniPath: document.getElementById('settings-oni-path'),
   settingsUsturAddress: document.getElementById('settings-ustur-address'),
-  settingsUsturPath: document.getElementById('settings-ustur-path'),
   settingsGmAddress: document.getElementById('settings-gm-address'),
   settingsAephiaKey: document.getElementById('settings-aephia-key'),
   updateButton: document.getElementById('update-btn'),
@@ -81,11 +78,8 @@ function openSettings() {
   const gm = profileById('gm-hot-wallet');
   els.settingsRpc.value = state.rpcUrl || '';
   els.settingsMudAddress.value = mud.address || '';
-  els.settingsMudPath.value = mud.derivationPath || "44'/501'/0'";
   els.settingsOniAddress.value = oni.address || '';
-  els.settingsOniPath.value = oni.derivationPath || "44'/501'/0'";
   els.settingsUsturAddress.value = ustur.address || '';
-  els.settingsUsturPath.value = ustur.derivationPath || "44'/501'/0'";
   els.settingsGmAddress.value = gm.address || '';
   els.settingsAephiaKey.value = '';
   els.settingsAephiaKey.placeholder = state.aephia.configured
@@ -123,9 +117,9 @@ async function saveSettings() {
   const result = await window.batchSender.saveSettings({
     rpcUrl: els.settingsRpc.value,
     profiles: {
-      'mud-ledger': { address: els.settingsMudAddress.value, derivationPath: els.settingsMudPath.value },
-      'oni-ledger': { address: els.settingsOniAddress.value, derivationPath: els.settingsOniPath.value },
-      'ustur-ledger': { address: els.settingsUsturAddress.value, derivationPath: els.settingsUsturPath.value },
+      'mud-ledger': { address: els.settingsMudAddress.value },
+      'oni-ledger': { address: els.settingsOniAddress.value },
+      'ustur-ledger': { address: els.settingsUsturAddress.value },
       'gm-hot-wallet': { address: els.settingsGmAddress.value },
     },
     aephiaApiKey: els.settingsAephiaKey.value,

@@ -13,7 +13,7 @@
         <img class="aephia-logo" src="../assets/aephia-logo.webp" alt="Aephia">
         <div><p class="eyebrow">AEPHIA · STAR ATLAS WALLET TOOL</p><h1>Batch Sender</h1><p class="subtitle">Review and send raw materials and components in one controlled flow.</p></div>
       </div>
-      <div class="hero-actions"><button id="update-btn" class="button secondary" type="button">Update</button><button id="settings-btn" class="button secondary" type="button">Wallet settings</button><span class="version">v0.1.2</span></div>
+      <div class="hero-actions"><button id="update-btn" class="button secondary" type="button">Update</button><button id="settings-btn" class="button secondary" type="button">Wallet settings</button><span class="version">v0.1.3</span></div>
     </header>
 
     <section class="panel">
@@ -94,14 +94,12 @@
       <div class="settings-grid">
         <label class="settings-wide"><span>Aephia API key</span><input id="settings-aephia-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a new key or leave blank to keep the saved key"></label>
         <label class="settings-wide"><span>Solana RPC URL</span><input id="settings-rpc" type="url" spellcheck="false" placeholder="https://…"></label>
-        <label><span>MUD Ledger public address</span><input id="settings-mud-address" type="text" spellcheck="false"></label>
-        <label><span>MUD derivation path</span><input id="settings-mud-path" type="text" spellcheck="false"></label>
-        <label><span>ONI Ledger public address</span><input id="settings-oni-address" type="text" spellcheck="false"></label>
-        <label><span>ONI derivation path</span><input id="settings-oni-path" type="text" spellcheck="false"></label>
-        <label><span>USTUR Ledger public address</span><input id="settings-ustur-address" type="text" spellcheck="false"></label>
-        <label><span>USTUR derivation path</span><input id="settings-ustur-path" type="text" spellcheck="false"></label>
+        <label class="settings-wide"><span>MUD Ledger public address</span><input id="settings-mud-address" type="text" spellcheck="false"></label>
+        <label class="settings-wide"><span>ONI Ledger public address</span><input id="settings-oni-address" type="text" spellcheck="false"></label>
+        <label class="settings-wide"><span>USTUR Ledger public address</span><input id="settings-ustur-address" type="text" spellcheck="false"></label>
         <label class="settings-wide"><span>GM Market Bot hot-wallet public address</span><input id="settings-gm-address" type="text" spellcheck="false"></label>
       </div>
+      <p class="subtitle settings-intro ledger-note">Ledger derivation paths are detected automatically from the public addresses when signing.</p>
       <p id="settings-message" class="notice" hidden></p>
       <div class="modal-actions"><button id="cancel-settings-btn" class="button secondary" type="button">Cancel</button><button id="save-settings-btn" class="button primary" type="button">Save settings</button></div>
     </section>

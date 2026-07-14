@@ -86,6 +86,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .modal-actions { justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .settings-modal { width: min(780px, 100%); }
 .settings-intro { margin-bottom: 18px; }
+.ledger-note { margin: 14px 0 0; }
 .settings-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 13px; }
 .settings-wide { grid-column: 1 / -1; }
 .update-modal { width: min(560px, 100%); }

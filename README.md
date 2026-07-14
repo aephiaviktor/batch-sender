@@ -29,7 +29,7 @@ The selected sender currently pays transaction fees and recipient ATA rent. Nati
 
 ## Wallet setup
 
-Open **Wallet settings** inside the app to configure the Solana RPC URL, the three Ledger public addresses and derivation paths, and the GM Market Bot public address. These public settings are stored locally in Electron's per-user data folder.
+Open **Wallet settings** inside the app to configure the Solana RPC URL, the three Ledger public addresses, and the GM Market Bot public address. Ledger derivation paths are detected automatically when signing. These public settings are stored locally in Electron's per-user data folder.
 
 Do not enter a wallet secret in Wallet settings. The GM hot-wallet signing key has a separate native file-import flow, is protected by Windows DPAPI, and remains in the Electron main process.
 
