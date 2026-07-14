@@ -43,4 +43,6 @@ npm start
 
 On Windows, after `npm ci` has been run once, double-click `launch-batch-sender.vbs` to start Batch Sender without keeping a terminal window open. A shortcut to this file can be placed on the desktop.
 
+Double-click `create-desktop-shortcut.vbs` once to create a **Batch Sender** desktop shortcut with the Aephia app icon. The shortcut targets the terminal-free launcher and automatically uses the current checkout location.
+
 The in-app updater checks the public `aephiaviktor/batch-sender` GitHub repository anonymously. Installing an update fast-forwards the local Git checkout, refreshes dependencies, and relaunches the app; no GitHub account or token is required.
