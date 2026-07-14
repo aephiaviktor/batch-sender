@@ -9,12 +9,11 @@
 <body>
   <main class="shell">
     <header class="hero">
-      <div>
-        <p class="eyebrow">STAR ATLAS WALLET TOOL</p>
-        <h1>Batch Sender</h1>
-        <p class="subtitle">Review and send raw materials and components in one controlled flow.</p>
+      <div class="brand">
+        <img class="aephia-logo" src="../assets/aephia-logo.webp" alt="Aephia">
+        <div><p class="eyebrow">AEPHIA · STAR ATLAS WALLET TOOL</p><h1>Batch Sender</h1><p class="subtitle">Review and send raw materials and components in one controlled flow.</p></div>
       </div>
-      <div class="hero-actions"><button id="settings-btn" class="button secondary" type="button">Wallet settings</button><span class="version">v0.1.1</span></div>
+      <div class="hero-actions"><button id="update-btn" class="button secondary" type="button">Update</button><button id="settings-btn" class="button secondary" type="button">Wallet settings</button><span class="version">v0.1.2</span></div>
     </header>
 
     <section class="panel">
@@ -93,6 +92,7 @@
       <div class="modal-header"><div><p class="eyebrow">LOCAL CONFIGURATION</p><h2 id="settings-title">Wallet settings</h2></div><button id="close-settings-btn" class="icon-button" type="button">Close</button></div>
       <p class="subtitle settings-intro">Only public wallet details are stored here. Private keys are never entered in this screen.</p>
       <div class="settings-grid">
+        <label class="settings-wide"><span>Aephia API key</span><input id="settings-aephia-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a new key or leave blank to keep the saved key"></label>
         <label class="settings-wide"><span>Solana RPC URL</span><input id="settings-rpc" type="url" spellcheck="false" placeholder="https://…"></label>
         <label><span>MUD Ledger public address</span><input id="settings-mud-address" type="text" spellcheck="false"></label>
         <label><span>MUD derivation path</span><input id="settings-mud-path" type="text" spellcheck="false"></label>
@@ -104,6 +104,14 @@
       </div>
       <p id="settings-message" class="notice" hidden></p>
       <div class="modal-actions"><button id="cancel-settings-btn" class="button secondary" type="button">Cancel</button><button id="save-settings-btn" class="button primary" type="button">Save settings</button></div>
+    </section>
+  </div>
+
+  <div id="update-modal" class="modal-backdrop" hidden>
+    <section class="modal update-modal" role="dialog" aria-modal="true" aria-labelledby="update-title">
+      <div class="modal-header"><div><p class="eyebrow">PRIVATE GITHUB REPOSITORY</p><h2 id="update-title">Batch Sender update</h2></div><button id="close-update-btn" class="icon-button" type="button">Close</button></div>
+      <p id="update-message" class="notice">Checking GitHub…</p>
+      <div class="modal-actions"><button id="cancel-update-btn" class="button secondary" type="button">Cancel</button><button id="install-update-btn" class="button primary" type="button" disabled>Install update</button></div>
     </section>
   </div>
 

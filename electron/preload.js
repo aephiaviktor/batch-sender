@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('batchSender', Object.freeze({
   getBalances: (profileId) => ipcRenderer.invoke('batch:get-balances', { profileId }),
   saveRecipient: (payload) => ipcRenderer.invoke('batch:save-recipient', payload),
   saveSettings: (payload) => ipcRenderer.invoke('batch:save-settings', payload),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
   importHotWallet: () => ipcRenderer.invoke('batch:import-hot-wallet'),
   preview: (payload) => ipcRenderer.invoke('batch:preview', payload),
   send: (previewId) => ipcRenderer.invoke('batch:send', { previewId }),

@@ -16,6 +16,8 @@ body { margin: 0; min-width: 860px; background: radial-gradient(circle at 20% 0%
 button, input, select { font: inherit; }
 .shell { width: min(1050px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0; }
 .hero { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.aephia-logo { width: 64px; height: 64px; border-radius: 13px; object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
 .hero-actions { display: flex; align-items: center; gap: 10px; }
 .eyebrow { margin: 0 0 5px; color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .16em; }
 h1 { margin: 0; font-size: 36px; letter-spacing: -.04em; }
@@ -86,4 +88,6 @@ tbody tr:last-child td { border-bottom: 0; }
 .settings-intro { margin-bottom: 18px; }
 .settings-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 13px; }
 .settings-wide { grid-column: 1 / -1; }
+.update-modal { width: min(560px, 100%); }
+.shell.locked > section, .shell.locked > footer { opacity: .32; pointer-events: none; filter: saturate(.4); }
 @media (max-width: 940px) { .sender-grid { grid-template-columns: repeat(2, 1fr); } }

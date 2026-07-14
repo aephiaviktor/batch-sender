@@ -1,12 +1,15 @@
 'use strict';
 
 const { createHash, randomUUID } = require('node:crypto');
+const { execFile } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { promisify } = require('node:util');
 const bs58 = require('bs58');
 const { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } = require('electron');
 const { PublicKey, Transaction } = require('@solana/web3.js');
 const { createConnection, getEligibleBalances } = require('../lib/balances');
+const { readAephiaKey, saveAephiaKey, validateAephiaKey } = require('../lib/aephia-auth');
 const { parseTokenAmount, formatBaseUnits } = require('../lib/amounts');
 const { getHotWalletStatus, importHotWallet, loadHotWallet } = require('../lib/hot-wallet-store');
 const { signTransactionWithLedger } = require('../lib/ledger-signer');
@@ -18,6 +21,10 @@ const APP_NAME = 'Batch Sender';
 const PREVIEW_TTL_MS = 5 * 60 * 1000;
 const previewSessions = new Map();
 let mainWindow;
+let aephiaValidation = { checkedAt: 0, valid: false, message: 'Aephia API key is required.' };
+const execFileAsync = promisify(execFile);
+const APP_ROOT = path.resolve(__dirname, '..');
+const AEPHIA_VALIDATION_TTL_MS = 5 * 60 * 1000;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -82,6 +89,7 @@ function publicProfileState(config) {
 async function getState() {
   const userDataPath = app.getPath('userData');
   const config = await loadPublicConfig(userDataPath);
+  const aephia = await getAephiaStatus();
   return {
     ok: true,
     profiles: publicProfileState(config),
@@ -90,7 +98,55 @@ async function getState() {
     rpcUrl: config.rpcUrl,
     rpcConfigured: Boolean(config.rpcUrl),
     configPath: path.join(userDataPath, 'config.json'),
+    aephia,
   };
+}
+
+async function getAephiaStatus(force = false) {
+  if (!force && Date.now() - aephiaValidation.checkedAt < AEPHIA_VALIDATION_TTL_MS) return aephiaValidation;
+  try {
+    const token = await readAephiaKey(app.getPath('userData'), safeStorage);
+    if (!token) throw new Error('Aephia API key is required.');
+    await validateAephiaKey(token);
+    aephiaValidation = { configured: true, valid: true, protection: 'Windows DPAPI', checkedAt: Date.now(), message: '' };
+  } catch (error) {
+    aephiaValidation = {
+      configured: !String(error?.message || '').includes('is required'),
+      valid: false,
+      checkedAt: Date.now(),
+      message: error?.message || String(error),
+    };
+  }
+  return aephiaValidation;
+}
+
+async function requireValidAephiaKey() {
+  const status = await getAephiaStatus();
+  if (!status.valid) throw new Error(status.message || 'A valid Aephia API key is required.');
+}
+
+async function runRepoCommand(command, args) {
+  const executable = process.platform === 'win32' && command === 'npm' ? 'npm.cmd' : command;
+  const result = await execFileAsync(executable, args, { cwd: APP_ROOT, windowsHide: true, timeout: 120000 });
+  return String(result.stdout || '').trim();
+}
+
+async function checkForUpdates() {
+  await runRepoCommand('git', ['fetch', 'origin', 'main']);
+  const [current, latest] = await Promise.all([
+    runRepoCommand('git', ['rev-parse', 'HEAD']),
+    runRepoCommand('git', ['rev-parse', 'origin/main']),
+  ]);
+  return { ok: true, updateAvailable: current !== latest, current: current.slice(0, 7), latest: latest.slice(0, 7) };
+}
+
+async function installUpdate() {
+  const dirty = await runRepoCommand('git', ['status', '--porcelain']);
+  if (dirty) throw new Error('Update stopped because the Batch Sender folder has local changes.');
+  await runRepoCommand('git', ['pull', '--ff-only', 'origin', 'main']);
+  await runRepoCommand('npm', ['ci']);
+  setImmediate(() => { app.relaunch(); app.exit(0); });
+  return { ok: true, restarting: true };
 }
 
 async function chooseAndImportHotWallet() {
@@ -413,7 +469,7 @@ function safeResult(handler) {
 ipcMain.handle('batch:get-state', safeResult(getState));
 ipcMain.handle('batch:get-balances', safeResult(async (payload) => ({
   ok: true,
-  balances: await refreshBalances(payload.profileId),
+  balances: await requireValidAephiaKey().then(() => refreshBalances(payload.profileId)),
 })));
 ipcMain.handle('batch:save-recipient', safeResult(async (payload) => ({
   ok: true,
@@ -421,13 +477,23 @@ ipcMain.handle('batch:save-recipient', safeResult(async (payload) => ({
 })));
 ipcMain.handle('batch:save-settings', safeResult(async (payload) => {
   await savePublicConfig(app.getPath('userData'), payload);
+  if (String(payload?.aephiaApiKey || '').trim()) {
+    await saveAephiaKey(app.getPath('userData'), safeStorage, payload.aephiaApiKey);
+  }
+  aephiaValidation.checkedAt = 0;
   return getState();
 }));
 ipcMain.handle('batch:import-hot-wallet', safeResult(chooseAndImportHotWallet));
-ipcMain.handle('batch:preview', safeResult(previewBatch));
+ipcMain.handle('batch:preview', safeResult(async (payload) => {
+  await requireValidAephiaKey();
+  return previewBatch(payload);
+}));
+ipcMain.handle('updates:check', safeResult(checkForUpdates));
+ipcMain.handle('updates:install', safeResult(installUpdate));
 ipcMain.handle('batch:send', async (event, payload) => {
   const sendProgress = (message) => event.sender.send('batch:progress', { message });
   try {
+    await requireValidAephiaKey();
     return await sendPreviewedBatch(payload || {}, sendProgress);
   } catch (error) {
     return { ok: false, message: error?.message || String(error) };

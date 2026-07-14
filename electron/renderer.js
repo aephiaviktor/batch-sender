@@ -38,11 +38,19 @@ const els = {
   settingsUsturAddress: document.getElementById('settings-ustur-address'),
   settingsUsturPath: document.getElementById('settings-ustur-path'),
   settingsGmAddress: document.getElementById('settings-gm-address'),
+  settingsAephiaKey: document.getElementById('settings-aephia-key'),
+  updateButton: document.getElementById('update-btn'),
+  updateModal: document.getElementById('update-modal'),
+  updateMessage: document.getElementById('update-message'),
+  closeUpdate: document.getElementById('close-update-btn'),
+  cancelUpdate: document.getElementById('cancel-update-btn'),
+  installUpdate: document.getElementById('install-update-btn'),
 };
 
 const state = {
   profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '', rpcUrl: '',
   hotWallet: { configured: false, publicKey: '', protection: '' }, currentPreview: null,
+  aephia: { configured: false, valid: false, message: 'Aephia API key is required.' },
 };
 
 function shortKey(value) {
@@ -79,9 +87,28 @@ function openSettings() {
   els.settingsUsturAddress.value = ustur.address || '';
   els.settingsUsturPath.value = ustur.derivationPath || "44'/501'/0'";
   els.settingsGmAddress.value = gm.address || '';
+  els.settingsAephiaKey.value = '';
+  els.settingsAephiaKey.placeholder = state.aephia.configured
+    ? 'Leave blank to keep the saved key'
+    : 'Enter your Aephia API key';
   els.settingsMessage.hidden = true;
   els.settingsMessage.classList.remove('error');
   els.settingsModal.hidden = false;
+}
+
+function renderAuthGate() {
+  const locked = !state.aephia.valid;
+  document.querySelector('.shell').classList.toggle('locked', locked);
+  els.settingsButton.disabled = false;
+  els.updateButton.disabled = locked;
+  els.closeSettings.hidden = locked;
+  els.cancelSettings.hidden = locked;
+  if (locked) {
+    openSettings();
+    els.settingsMessage.hidden = false;
+    els.settingsMessage.classList.add('error');
+    els.settingsMessage.textContent = state.aephia.message || 'Enter a valid Aephia API key to unlock Batch Sender.';
+  }
 }
 
 async function saveSettings() {
@@ -101,6 +128,7 @@ async function saveSettings() {
       'ustur-ledger': { address: els.settingsUsturAddress.value, derivationPath: els.settingsUsturPath.value },
       'gm-hot-wallet': { address: els.settingsGmAddress.value },
     },
+    aephiaApiKey: els.settingsAephiaKey.value,
   });
   state.busy = false;
   els.saveSettings.disabled = false;
@@ -114,8 +142,10 @@ async function saveSettings() {
   state.profiles = result.profiles || [];
   state.rpcUrl = result.rpcUrl || '';
   state.hotWallet = result.hotWallet || state.hotWallet;
+  state.aephia = result.aephia || state.aephia;
   state.configPath = result.configPath || state.configPath;
-  els.settingsModal.hidden = true;
+  renderAuthGate();
+  if (state.aephia.valid) els.settingsModal.hidden = true;
   state.balances = [];
   renderProfiles();
   renderBalances();
@@ -431,14 +461,55 @@ async function initialize() {
   state.configPath = result.configPath || '';
   state.rpcUrl = result.rpcUrl || '';
   state.hotWallet = result.hotWallet || state.hotWallet;
+  state.aephia = result.aephia || state.aephia;
   state.selectedProfileId = state.profiles[0]?.id || '';
   renderProfiles();
   renderRecipients();
+  renderAuthGate();
+  if (!state.aephia.valid) { renderBalances(); updateActions(); return; }
   await loadBalances();
+}
+
+async function openUpdate() {
+  els.updateModal.hidden = false;
+  els.updateMessage.classList.remove('error');
+  els.updateMessage.textContent = 'Checking the private GitHub repository…';
+  els.installUpdate.disabled = true;
+  const result = await window.batchSender.checkForUpdates();
+  if (!result?.ok) {
+    els.updateMessage.classList.add('error');
+    els.updateMessage.textContent = result?.message || 'Update check failed.';
+    return;
+  }
+  els.updateMessage.textContent = result.updateAvailable
+    ? `Update available (${result.current} → ${result.latest}).`
+    : `Batch Sender is current (${result.current}).`;
+  els.installUpdate.disabled = !result.updateAvailable;
+}
+
+async function installUpdate() {
+  els.installUpdate.disabled = true;
+  els.closeUpdate.disabled = true;
+  els.cancelUpdate.disabled = true;
+  els.updateMessage.textContent = 'Downloading from GitHub and installing dependencies…';
+  const result = await window.batchSender.installUpdate();
+  if (!result?.ok) {
+    els.updateMessage.classList.add('error');
+    els.updateMessage.textContent = result?.message || 'Update failed.';
+    els.closeUpdate.disabled = false;
+    els.cancelUpdate.disabled = false;
+  } else {
+    els.updateMessage.textContent = 'Update installed. Restarting Batch Sender…';
+  }
 }
 
 els.refresh.addEventListener('click', loadBalances);
 els.settingsButton.addEventListener('click', openSettings);
+els.updateButton.addEventListener('click', openUpdate);
+els.installUpdate.addEventListener('click', installUpdate);
+for (const button of [els.closeUpdate, els.cancelUpdate]) button.addEventListener('click', () => {
+  if (!button.disabled) els.updateModal.hidden = true;
+});
 els.saveSettings.addEventListener('click', saveSettings);
 for (const button of [els.closeSettings, els.cancelSettings]) button.addEventListener('click', () => {
   if (!state.busy) els.settingsModal.hidden = true;
