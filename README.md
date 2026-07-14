@@ -42,3 +42,5 @@ npm start
 ```
 
 On Windows, after `npm ci` has been run once, double-click `launch-batch-sender.vbs` to start Batch Sender without keeping a terminal window open. A shortcut to this file can be placed on the desktop.
+
+The in-app updater checks the public `aephiaviktor/batch-sender` GitHub repository anonymously. Installing an update fast-forwards the local Git checkout, refreshes dependencies, and relaunches the app; no GitHub account or token is required.

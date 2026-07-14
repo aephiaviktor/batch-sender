@@ -473,7 +473,7 @@ async function initialize() {
 async function openUpdate() {
   els.updateModal.hidden = false;
   els.updateMessage.classList.remove('error');
-  els.updateMessage.textContent = 'Checking the private GitHub repository…';
+  els.updateMessage.textContent = 'Checking the public GitHub repository…';
   els.installUpdate.disabled = true;
   const result = await window.batchSender.checkForUpdates();
   if (!result?.ok) {
@@ -482,8 +482,8 @@ async function openUpdate() {
     return;
   }
   els.updateMessage.textContent = result.updateAvailable
-    ? `Update available (${result.current} → ${result.latest}).`
-    : `Batch Sender is current (${result.current}).`;
+    ? `Update available (v${result.current} → v${result.latest}).`
+    : `Batch Sender is current (v${result.current}).`;
   els.installUpdate.disabled = !result.updateAvailable;
 }
 

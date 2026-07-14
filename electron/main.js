@@ -25,6 +25,8 @@ let aephiaValidation = { checkedAt: 0, valid: false, message: 'Aephia API key is
 const execFileAsync = promisify(execFile);
 const APP_ROOT = path.resolve(__dirname, '..');
 const AEPHIA_VALIDATION_TTL_MS = 5 * 60 * 1000;
+const GITHUB_REPO = 'aephiaviktor/batch-sender';
+const GITHUB_PACKAGE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/package.json`;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -132,12 +134,18 @@ async function runRepoCommand(command, args) {
 }
 
 async function checkForUpdates() {
-  await runRepoCommand('git', ['fetch', 'origin', 'main']);
-  const [current, latest] = await Promise.all([
-    runRepoCommand('git', ['rev-parse', 'HEAD']),
-    runRepoCommand('git', ['rev-parse', 'origin/main']),
-  ]);
-  return { ok: true, updateAvailable: current !== latest, current: current.slice(0, 7), latest: latest.slice(0, 7) };
+  const response = await fetch(`${GITHUB_PACKAGE_URL}?t=${Date.now()}`, {
+    headers: { 'User-Agent': 'batch-sender-updater' },
+  });
+  if (!response.ok) throw new Error(`Public GitHub update check failed: HTTP ${response.status}.`);
+  const remotePackage = await response.json();
+  const current = require('../package.json').version;
+  const latest = String(remotePackage?.version || '').trim();
+  if (!/^\d+\.\d+\.\d+$/.test(latest)) throw new Error('Public GitHub package version is invalid.');
+  const toParts = (version) => version.split('.').map(Number);
+  const [a, b] = [toParts(latest), toParts(current)];
+  const updateAvailable = a.some((part, index) => part !== b[index] && a.slice(0, index).every((value, earlier) => value === b[earlier]) && part > b[index]);
+  return { ok: true, updateAvailable, current, latest };
 }
 
 async function installUpdate() {
