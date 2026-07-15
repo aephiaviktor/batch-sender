@@ -13,7 +13,13 @@ const { readAephiaKey, saveAephiaKey, validateAephiaKey } = require('../lib/aeph
 const { parseTokenAmount, formatBaseUnits } = require('../lib/amounts');
 const { getHotWalletStatus, importHotWallet, loadHotWallet } = require('../lib/hot-wallet-store');
 const { signTransactionWithLedger } = require('../lib/ledger-signer');
-const { loadPublicConfig, loadRecipients, savePublicConfig, saveRecipient } = require('../lib/local-store');
+const {
+  loadPublicConfig,
+  loadRecipients,
+  saveLedgerDerivationPath,
+  savePublicConfig,
+  saveRecipient,
+} = require('../lib/local-store');
 const { planBatchTransactions } = require('../lib/planner');
 const { SENDER_PROFILES, getSenderProfile } = require('../lib/profiles');
 
@@ -398,7 +404,12 @@ async function sendPreviewedBatch(payload, onProgress = () => undefined) {
     let signed;
     try {
       signed = await signPlannedTransaction(execution, transaction, ledgerPath, onProgress);
-      ledgerPath = signed.ledgerPath || ledgerPath;
+      const matchedLedgerPath = signed.ledgerPath || ledgerPath;
+      if (execution.profile.kind === 'ledger' && matchedLedgerPath !== ledgerPath) {
+        await saveLedgerDerivationPath(app.getPath('userData'), execution.profile.id, matchedLedgerPath);
+        onProgress(`Saved ${matchedLedgerPath} for future ${execution.profile.label} sends.`);
+      }
+      ledgerPath = matchedLedgerPath;
     } catch (error) {
       results.push({
         index: chunkNumber,
