@@ -337,6 +337,16 @@ async function querySignature(connection, signature) {
   }
 }
 
+async function describeRpcError(connection, error) {
+  const parts = [error?.message || String(error)];
+  let logs = Array.isArray(error?.logs) ? error.logs : [];
+  if (!logs.length && typeof error?.getLogs === 'function') {
+    try { logs = await error.getLogs(connection) || []; } catch { /* Keep the original RPC error. */ }
+  }
+  if (logs.length) parts.push(`Logs: ${logs.join(' | ')}`);
+  return parts.join(' ');
+}
+
 async function confirmBroadcast(connection, signature, blockhash) {
   try {
     const confirmation = await connection.confirmTransaction({
@@ -368,6 +378,11 @@ async function signPlannedTransaction(execution, transaction, ledgerPath, onProg
       execution.owner.toBase58(),
       ledgerPath,
       onProgress,
+      async (matchedLedgerPath) => {
+        if (matchedLedgerPath === ledgerPath) return;
+        await saveLedgerDerivationPath(app.getPath('userData'), execution.profile.id, matchedLedgerPath);
+        onProgress(`Saved ${matchedLedgerPath} for future ${execution.profile.label} sends.`);
+      },
     );
     return { transaction: signed.transaction, ledgerPath: signed.ledgerPath };
   }
@@ -410,12 +425,7 @@ async function sendPreviewedBatch(payload, onProgress = () => undefined) {
     let signed;
     try {
       signed = await signPlannedTransaction(execution, transaction, ledgerPath, onProgress);
-      const matchedLedgerPath = signed.ledgerPath || ledgerPath;
-      if (execution.profile.kind === 'ledger' && matchedLedgerPath !== ledgerPath) {
-        await saveLedgerDerivationPath(app.getPath('userData'), execution.profile.id, matchedLedgerPath);
-        onProgress(`Saved ${matchedLedgerPath} for future ${execution.profile.label} sends.`);
-      }
-      ledgerPath = matchedLedgerPath;
+      ledgerPath = signed.ledgerPath || ledgerPath;
     } catch (error) {
       results.push({
         index: chunkNumber,
@@ -436,16 +446,22 @@ async function sendPreviewedBatch(payload, onProgress = () => undefined) {
         preflightCommitment: 'confirmed',
       });
     } catch (error) {
+      const errorDetails = await describeRpcError(execution.connection, error);
       const status = await querySignature(execution.connection, expectedSignature);
       const landed = status && !status.err;
+      const deterministicFailure = /simulation failed|preflight failure|blockhash not found|insufficient funds/i.test(errorDetails);
       results.push({
         index: chunkNumber,
-        status: landed && ['confirmed', 'finalized'].includes(status.confirmationStatus) ? 'confirmed' : 'unknown',
+        status: landed && ['confirmed', 'finalized'].includes(status.confirmationStatus)
+          ? 'confirmed'
+          : deterministicFailure ? 'failed' : 'unknown',
         signature: expectedSignature,
         tokens: groups.map((group) => group.name),
         message: landed
-          ? `Transaction landed despite the broadcast error: ${error?.message || String(error)}`
-          : `Broadcast outcome is unknown: ${error?.message || String(error)}`,
+          ? `Transaction landed despite the broadcast error: ${errorDetails}`
+          : deterministicFailure
+            ? `Transaction was rejected before broadcast: ${errorDetails}`
+            : `Broadcast outcome is unknown: ${errorDetails}`,
       });
       break;
     }

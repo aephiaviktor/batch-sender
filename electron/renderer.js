@@ -392,9 +392,9 @@ function renderSendResult(result) {
   heading.textContent = result.status === 'confirmed' ? 'Batch confirmed' : 'Batch needs attention';
   heading.className = result.status === 'confirmed' ? 'result-confirmed' : 'result-failed';
   els.previewContent.appendChild(heading);
-  appendReviewRows(els.previewContent, 'Transaction results', result.results.map((row) => [
-    `Transaction ${row.index}: ${row.status}`,
-    row.signature || row.message,
+  appendReviewRows(els.previewContent, 'Transaction results', result.results.flatMap((row) => [
+    [`Transaction ${row.index}: ${row.status}`, row.signature || 'No signature'],
+    [`Transaction ${row.index} details`, row.message || 'No additional details'],
   ]));
   if (result.remainingCount) {
     const remaining = document.createElement('p');
