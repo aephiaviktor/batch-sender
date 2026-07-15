@@ -39,6 +39,7 @@ const els = {
   settingsGrid: document.getElementById('settings-grid'),
   toggleSensitive: document.getElementById('toggle-sensitive-btn'),
   updateButton: document.getElementById('update-btn'),
+  appVersion: document.getElementById('app-version'),
   updateModal: document.getElementById('update-modal'),
   updateMessage: document.getElementById('update-message'),
   closeUpdate: document.getElementById('close-update-btn'),
@@ -461,6 +462,7 @@ async function preview() {
 async function initialize() {
   const result = await window.batchSender.getState();
   if (!result?.ok) { els.status.textContent = result?.message || 'App initialization failed.'; return; }
+  els.appVersion.textContent = result.version ? `v${result.version}` : 'v?';
   state.profiles = result.profiles || [];
   state.recipients = result.recipients || [];
   state.configPath = result.configPath || '';

@@ -100,6 +100,7 @@ async function getState() {
   const aephia = await getAephiaStatus();
   return {
     ok: true,
+    version: require('../package.json').version,
     profiles: publicProfileState(config),
     recipients: await loadRecipients(userDataPath),
     hotWallet: await getHotWalletStatus(userDataPath),
