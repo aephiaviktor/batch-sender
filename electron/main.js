@@ -1,7 +1,7 @@
 'use strict';
 
 const { createHash, randomUUID } = require('node:crypto');
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { promisify } = require('node:util');
@@ -164,8 +164,20 @@ async function installUpdate() {
   const dirty = await runRepoCommand('git', ['status', '--porcelain']);
   if (dirty) throw new Error('Update stopped because the Batch Sender folder has local changes.');
   await runRepoCommand('git', ['pull', '--ff-only', 'origin', 'main']);
-  await runRepoCommand('npm', ['ci']);
-  setImmediate(() => { app.relaunch(); app.exit(0); });
+  if (process.platform === 'win32') {
+    const command = 'ping 127.0.0.1 -n 3 >nul && npm.cmd ci && npm.cmd start';
+    const helper = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
+      cwd: APP_ROOT,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    helper.unref();
+    setImmediate(() => app.exit(0));
+  } else {
+    await runRepoCommand('npm', ['ci']);
+    setImmediate(() => { app.relaunch(); app.exit(0); });
+  }
   return { ok: true, restarting: true };
 }
 
