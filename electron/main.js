@@ -134,8 +134,13 @@ async function requireValidAephiaKey() {
 }
 
 async function runRepoCommand(command, args) {
-  const executable = process.platform === 'win32' && command === 'npm' ? 'npm.cmd' : command;
-  const result = await execFileAsync(executable, args, { cwd: APP_ROOT, windowsHide: true, timeout: 120000 });
+  let executable = command;
+  let commandArgs = args;
+  if (process.platform === 'win32' && command === 'npm') {
+    executable = process.env.ComSpec || 'cmd.exe';
+    commandArgs = ['/d', '/s', '/c', 'npm.cmd', ...args];
+  }
+  const result = await execFileAsync(executable, commandArgs, { cwd: APP_ROOT, windowsHide: true, timeout: 120000 });
   return String(result.stdout || '').trim();
 }
 
