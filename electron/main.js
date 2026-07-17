@@ -6,12 +6,12 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { promisify } = require('node:util');
 const bs58 = require('bs58');
-const { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, safeStorage } = require('electron');
 const { PublicKey, Transaction } = require('@solana/web3.js');
 const { createConnection, getEligibleBalances } = require('../lib/balances');
 const { readAephiaKey, saveAephiaKey, validateAephiaKey } = require('../lib/aephia-auth');
 const { parseTokenAmount, formatBaseUnits } = require('../lib/amounts');
-const { getHotWalletStatus, importHotWallet, loadHotWallet } = require('../lib/hot-wallet-store');
+const { getHotWalletStatus, importHotWallet, loadHotWallet, removeHotWallet } = require('../lib/hot-wallet-store');
 const { signTransactionWithLedger } = require('../lib/ledger-signer');
 const {
   loadPublicConfig,
@@ -181,27 +181,23 @@ async function installUpdate() {
   return { ok: true, restarting: true };
 }
 
-async function chooseAndImportHotWallet() {
-  const userDataPath = app.getPath('userData');
-  const config = await loadPublicConfig(userDataPath);
-  let expectedPublicKey = '';
+async function saveHotWalletSecret(payload) {
+  let expectedPublicKey;
   try {
-    expectedPublicKey = new PublicKey(String(config.profiles?.['gm-hot-wallet']?.address || '').trim()).toBase58();
+    expectedPublicKey = new PublicKey(String(payload?.expectedPublicKey || '').trim()).toBase58();
   } catch {
-    throw new Error('Configure the GM hot-wallet public address before importing its signing key.');
+    throw new Error('Configure a valid GM hot-wallet public address before saving its signing secret.');
   }
-
-  const selection = await dialog.showOpenDialog(mainWindow, {
-    title: 'Import GM Market Bot signing key',
-    properties: ['openFile'],
-    filters: [{ name: 'Keypair files', extensions: ['json', 'txt', 'key'] }, { name: 'All files', extensions: ['*'] }],
-  });
-  if (selection.canceled || !selection.filePaths[0]) return { ok: true, canceled: true };
-  const selectedPath = selection.filePaths[0];
-  const stat = await fs.stat(selectedPath);
-  if (!stat.isFile() || stat.size > 64 * 1024) throw new Error('Selected key file is not a valid small keypair file.');
-  const rawSecret = await fs.readFile(selectedPath, 'utf8');
-  return { ok: true, ...(await importHotWallet(userDataPath, safeStorage, rawSecret, expectedPublicKey)) };
+  return {
+    ok: true,
+    ...(await importHotWallet(
+      app.getPath('userData'),
+      safeStorage,
+      payload?.secret,
+      expectedPublicKey,
+      payload?.replaceConfirmed === true,
+    )),
+  };
 }
 
 async function getProfileContext(profileId) {
@@ -536,7 +532,11 @@ ipcMain.handle('batch:save-settings', safeResult(async (payload) => {
   aephiaValidation.checkedAt = 0;
   return getState();
 }));
-ipcMain.handle('batch:import-hot-wallet', safeResult(chooseAndImportHotWallet));
+ipcMain.handle('batch:save-hot-wallet-secret', safeResult(saveHotWalletSecret));
+ipcMain.handle('batch:remove-hot-wallet-secret', safeResult(async (payload) => ({
+  ok: true,
+  ...(await removeHotWallet(app.getPath('userData'), payload?.removeConfirmed === true)),
+})));
 ipcMain.handle('batch:preview', safeResult(async (payload) => {
   await requireValidAephiaKey();
   return previewBatch(payload);

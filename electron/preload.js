@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('batchSender', Object.freeze({
   saveSettings: (payload) => ipcRenderer.invoke('batch:save-settings', payload),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
-  importHotWallet: () => ipcRenderer.invoke('batch:import-hot-wallet'),
+  saveHotWalletSecret: (payload) => ipcRenderer.invoke('batch:save-hot-wallet-secret', payload),
+  removeHotWalletSecret: (removeConfirmed) => ipcRenderer.invoke('batch:remove-hot-wallet-secret', { removeConfirmed }),
   preview: (payload) => ipcRenderer.invoke('batch:preview', payload),
   send: (previewId) => ipcRenderer.invoke('batch:send', { previewId }),
   onProgress: (handler) => {

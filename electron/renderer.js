@@ -4,7 +4,6 @@ const els = {
   senderGrid: document.getElementById('sender-grid'),
   senderAddress: document.getElementById('sender-address'),
   copySender: document.getElementById('copy-sender-btn'),
-  importHotWallet: document.getElementById('import-hot-wallet-btn'),
   configMessage: document.getElementById('config-message'),
   refresh: document.getElementById('refresh-btn'),
   recipientSelect: document.getElementById('recipient-select'),
@@ -35,6 +34,9 @@ const els = {
   settingsOniAddress: document.getElementById('settings-oni-address'),
   settingsUsturAddress: document.getElementById('settings-ustur-address'),
   settingsGmAddress: document.getElementById('settings-gm-address'),
+  settingsGmSecret: document.getElementById('settings-gm-secret'),
+  settingsGmSecretStatus: document.getElementById('settings-gm-secret-status'),
+  removeGmSecret: document.getElementById('remove-gm-secret-btn'),
   settingsAephiaKey: document.getElementById('settings-aephia-key'),
   settingsGrid: document.getElementById('settings-grid'),
   toggleSensitive: document.getElementById('toggle-sensitive-btn'),
@@ -84,6 +86,14 @@ function openSettings() {
   els.settingsOniAddress.value = oni.address || '';
   els.settingsUsturAddress.value = ustur.address || '';
   els.settingsGmAddress.value = gm.address || '';
+  els.settingsGmSecret.value = '';
+  els.settingsGmSecret.placeholder = state.hotWallet.configured
+    ? 'Leave blank to keep the protected signing secret'
+    : 'Paste a base58 secret or JSON byte array';
+  els.settingsGmSecretStatus.textContent = state.hotWallet.configured
+    ? `Configured for ${shortKey(state.hotWallet.publicKey)} · ${state.hotWallet.protection}`
+    : 'No protected signing secret configured.';
+  els.removeGmSecret.hidden = !state.hotWallet.configured;
   els.settingsAephiaKey.value = '';
   els.settingsAephiaKey.placeholder = state.aephia.configured
     ? 'Leave blank to keep the saved key'
@@ -97,6 +107,7 @@ function openSettings() {
 function setSensitiveVisible(visible) {
   els.settingsGrid.classList.toggle('sensitive-hidden', !visible);
   els.settingsAephiaKey.type = visible ? 'text' : 'password';
+  els.settingsGmSecret.type = visible ? 'text' : 'password';
   els.settingsRpc.type = visible ? 'url' : 'password';
   els.toggleSensitive.textContent = visible ? 'Hide sensitive' : 'Show sensitive';
   els.toggleSensitive.dataset.visible = String(visible);
@@ -126,7 +137,19 @@ async function saveSettings() {
   els.settingsMessage.hidden = false;
   els.settingsMessage.classList.remove('error');
   els.settingsMessage.textContent = 'Validating and saving settings…';
-  const result = await window.batchSender.saveSettings({
+  let signingSecret = els.settingsGmSecret.value;
+  const replaceConfirmed = !signingSecret || !state.hotWallet.configured || window.confirm(
+    'Replace the currently protected GM signing secret? The existing secret cannot be recovered afterward.',
+  );
+  if (!replaceConfirmed) {
+    state.busy = false;
+    els.saveSettings.disabled = false;
+    els.closeSettings.disabled = false;
+    els.cancelSettings.disabled = false;
+    els.settingsMessage.textContent = 'Signing-secret replacement canceled. No settings were changed.';
+    return;
+  }
+  const saveRequest = window.batchSender.saveSettings({
     rpcUrl: els.settingsRpc.value,
     profiles: {
       'mud-ledger': { address: els.settingsMudAddress.value },
@@ -136,6 +159,23 @@ async function saveSettings() {
     },
     aephiaApiKey: els.settingsAephiaKey.value,
   });
+  const secretRequest = signingSecret
+    ? window.batchSender.saveHotWalletSecret({
+      secret: signingSecret,
+      expectedPublicKey: els.settingsGmAddress.value,
+      replaceConfirmed,
+    })
+    : Promise.resolve(null);
+  signingSecret = '';
+  els.settingsAephiaKey.value = '';
+  els.settingsGmSecret.value = '';
+  const [result, secretResult] = await Promise.all([saveRequest, secretRequest]);
+  if (secretResult && !secretResult.ok) {
+    result.ok = false;
+    result.message = secretResult.message || 'The signing secret could not be protected.';
+  } else if (secretResult) {
+    result.hotWallet = secretResult;
+  }
   state.busy = false;
   els.saveSettings.disabled = false;
   els.closeSettings.disabled = false;
@@ -186,8 +226,7 @@ function renderProfiles() {
   els.senderAddress.textContent = profile?.address ? shortKey(profile.address) : 'Not configured';
   els.senderAddress.title = profile?.address || '';
   els.copySender.disabled = !profile?.address;
-  els.importHotWallet.hidden = profile?.kind !== 'hot-wallet';
-  els.importHotWallet.disabled = !profile?.configured || state.busy;
+
 }
 
 function renderRecipients() {
@@ -373,7 +412,7 @@ function showPreview(result) {
     || (state.hotWallet.configured && state.hotWallet.publicKey === result.sender.address);
   els.previewNotice.classList.toggle('error', !result.plan.hasEnoughSol || !result.plan.isAtomic || !signerReady);
   els.previewNotice.textContent = !signerReady
-    ? 'The protected GM hot-wallet signing key must be imported before sending.'
+    ? 'The protected GM hot-wallet signing secret must be configured in Wallet settings before sending.'
     : result.plan.hasEnoughSol
       ? result.notice
       : `Insufficient SOL for the estimated ${formatSol(result.plan.estimatedTotalLamports)} cost. ${result.notice}`;
@@ -523,21 +562,28 @@ for (const button of [els.closeSettings, els.cancelSettings]) button.addEventLis
   if (!state.busy) els.settingsModal.hidden = true;
 });
 els.copySender.addEventListener('click', async () => { const value = selectedProfile()?.address; if (value) await navigator.clipboard.writeText(value); });
-els.importHotWallet.addEventListener('click', async () => {
+els.removeGmSecret.addEventListener('click', async () => {
+  if (state.busy || !state.hotWallet.configured) return;
+  const confirmed = window.confirm('Remove the protected GM signing secret from this computer? This cannot be undone.');
+  if (!confirmed) return;
   state.busy = true;
-  els.status.textContent = 'Waiting for protected key-file selection…';
-  renderProfiles();
-  updateActions();
-  const result = await window.batchSender.importHotWallet();
+  els.removeGmSecret.disabled = true;
+  const result = await window.batchSender.removeHotWalletSecret(true);
   state.busy = false;
+  els.removeGmSecret.disabled = false;
   if (!result?.ok) {
-    els.status.textContent = result?.message || 'Hot-wallet key import failed.';
-  } else if (result.canceled) {
-    els.status.textContent = 'Hot-wallet key import canceled.';
-  } else {
-    state.hotWallet = result;
-    els.status.textContent = `GM signing key protected with ${result.protection}.`;
+    els.settingsMessage.hidden = false;
+    els.settingsMessage.classList.add('error');
+    els.settingsMessage.textContent = result?.message || 'The protected signing secret could not be removed.';
+    return;
   }
+  state.hotWallet = result;
+  els.settingsGmSecret.value = '';
+  els.settingsGmSecretStatus.textContent = 'No protected signing secret configured.';
+  els.removeGmSecret.hidden = true;
+  els.settingsMessage.hidden = false;
+  els.settingsMessage.classList.remove('error');
+  els.settingsMessage.textContent = 'Protected GM signing secret removed.';
   renderProfiles();
   updateActions();
 });

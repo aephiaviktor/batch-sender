@@ -21,7 +21,7 @@ Transactions are built, reviewed, signed, broadcast, and confirmed locally on th
 - Recipient ATA inspection with idempotent creation planning
 - Deterministic serialized-size transaction splitting and fee/rent estimates
 - Multi-Ledger address/path matching with common-path fallback scanning
-- Windows `safeStorage`/DPAPI-protected GM hot-wallet import and signing
+- Windows `safeStorage`/DPAPI-protected GM hot-wallet secret storage and signing
 - Fresh blockhash per transaction, sequential broadcast/confirmation, and partial-result reporting
 - Comma-formatted token table with search, `MAX`, and `Clear all`
 
@@ -33,7 +33,7 @@ Open **Wallet settings** inside the app to configure the Solana RPC URL, add the
 
 The settings dialog hides the Aephia API key and RPC URL by default; use **Show sensitive** to reveal them temporarily. Aephia keys copied as a bare token, `Bearer …`, or `AEPHIA_API_KEY=…` are normalized before validation. The app accepts the API's successful HTTP 200 and 204 validation responses.
 
-Do not enter a wallet secret in Wallet settings. The GM hot-wallet signing key has a separate native file-import flow, is protected by Windows DPAPI, and remains in the Electron main process.
+The GM signing secret is pasted into a masked Wallet settings field and sent once through the narrow preload API to the Electron main process. Main validates that it derives the configured GM public address, stores only a Windows DPAPI-encrypted blob, and never returns the secret to the renderer. Replacing or removing a configured secret requires explicit confirmation.
 
 ## Development
 
