@@ -37,7 +37,7 @@ const GITHUB_PACKAGE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/mai
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
-    height: 820,
+    height: 900,
     minWidth: 860,
     minHeight: 680,
     title: APP_NAME,

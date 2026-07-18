@@ -19,7 +19,6 @@
     <section class="panel">
       <div class="section-heading">
         <div><span class="step">1</span><h2>Select sender</h2></div>
-        <button id="refresh-btn" class="button secondary" type="button">Refresh balances</button>
       </div>
       <div id="sender-grid" class="sender-grid"></div>
       <div class="address-row">
@@ -54,6 +53,7 @@
         <div class="table-actions">
           <input id="search-input" class="search" type="search" placeholder="Filter tokens">
           <button id="clear-btn" class="button secondary" type="button">Clear all</button>
+          <button id="refresh-btn" class="button secondary" type="button">Refresh balances</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -75,10 +75,6 @@
       <div class="modal-header"><div><p class="eyebrow">FINAL REVIEW</p><h2 id="preview-title">Batch preview</h2></div><button id="close-preview-btn" class="icon-button" type="button">Close</button></div>
       <div id="preview-content"></div>
       <p id="preview-notice" class="notice"></p>
-      <label id="non-atomic-row" class="check non-atomic" hidden>
-        <input id="non-atomic-confirm" type="checkbox">
-        I understand this multi-transaction batch is not atomic.
-      </label>
       <div class="modal-actions">
         <button id="cancel-preview-btn" class="button secondary" type="button">Back</button>
         <button id="confirm-send-btn" class="button primary" type="button">Confirm &amp; send</button>

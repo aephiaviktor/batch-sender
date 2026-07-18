@@ -18,8 +18,6 @@ const els = {
   modal: document.getElementById('preview-modal'),
   previewContent: document.getElementById('preview-content'),
   previewNotice: document.getElementById('preview-notice'),
-  nonAtomicRow: document.getElementById('non-atomic-row'),
-  nonAtomicConfirm: document.getElementById('non-atomic-confirm'),
   confirmSend: document.getElementById('confirm-send-btn'),
   closePreview: document.getElementById('close-preview-btn'),
   cancelPreview: document.getElementById('cancel-preview-btn'),
@@ -410,17 +408,16 @@ function showPreview(result) {
 
   const signerReady = result.sender.kind === 'ledger'
     || (state.hotWallet.configured && state.hotWallet.publicKey === result.sender.address);
-  els.previewNotice.classList.toggle('error', !result.plan.hasEnoughSol || !result.plan.isAtomic || !signerReady);
+  els.previewNotice.classList.toggle('error', !result.plan.hasEnoughSol || !signerReady);
   els.previewNotice.textContent = !signerReady
     ? 'The protected GM hot-wallet signing secret must be configured in Wallet settings before sending.'
     : result.plan.hasEnoughSol
       ? result.notice
       : `Insufficient SOL for the estimated ${formatSol(result.plan.estimatedTotalLamports)} cost. ${result.notice}`;
-  els.nonAtomicRow.hidden = result.plan.isAtomic;
-  els.nonAtomicConfirm.checked = false;
   els.confirmSend.hidden = false;
   els.confirmSend.textContent = 'Confirm & send';
-  els.confirmSend.disabled = !signerReady || !result.plan.hasEnoughSol || !result.plan.isAtomic;
+  els.confirmSend.disabled = !signerReady || !result.plan.hasEnoughSol;
+  els.cancelPreview.hidden = false;
   els.cancelPreview.textContent = 'Back';
   els.modal.hidden = false;
 }
@@ -445,9 +442,8 @@ function renderSendResult(result) {
   els.previewNotice.textContent = result.status === 'confirmed'
     ? 'Every transaction in the batch is confirmed.'
     : 'Review each signature and status carefully. Unknown does not mean failed; it means RPC confirmation could not be established.';
-  els.nonAtomicRow.hidden = true;
   els.confirmSend.hidden = true;
-  els.cancelPreview.textContent = 'Close';
+  els.cancelPreview.hidden = true;
 }
 
 async function sendPreviewedBatch() {
@@ -587,20 +583,21 @@ els.removeGmSecret.addEventListener('click', async () => {
   renderProfiles();
   updateActions();
 });
-els.recipientSelect.addEventListener('change', () => { if (els.recipientSelect.value) els.recipient.value = els.recipientSelect.value; updateActions(); });
+els.recipientSelect.addEventListener('change', () => {
+  if (els.recipientSelect.value) {
+    els.recipient.value = els.recipientSelect.value;
+    els.saveRecipient.checked = false;
+    els.recipientLabel.value = '';
+    els.recipientLabel.hidden = true;
+  }
+  updateActions();
+});
 els.recipient.addEventListener('input', updateActions);
 els.saveRecipient.addEventListener('change', () => { els.recipientLabel.hidden = !els.saveRecipient.checked; updateActions(); });
 els.recipientLabel.addEventListener('input', updateActions);
 els.search.addEventListener('input', renderBalances);
 els.clear.addEventListener('click', () => { els.tokenRows.querySelectorAll('input[data-key]').forEach((input) => { input.value = ''; }); updateActions(); });
 els.preview.addEventListener('click', preview);
-els.nonAtomicConfirm.addEventListener('change', () => {
-  const previewResult = state.currentPreview;
-  if (!previewResult) return;
-  const signerReady = previewResult.sender.kind === 'ledger'
-    || (state.hotWallet.configured && state.hotWallet.publicKey === previewResult.sender.address);
-  els.confirmSend.disabled = !els.nonAtomicConfirm.checked || !previewResult.plan.hasEnoughSol || !signerReady;
-});
 els.confirmSend.addEventListener('click', sendPreviewedBatch);
 for (const button of [els.closePreview, els.cancelPreview]) button.addEventListener('click', () => {
   if (!state.busy) els.modal.hidden = true;
