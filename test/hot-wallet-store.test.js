@@ -7,7 +7,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { Keypair } = require('@solana/web3.js');
-const { decodeSecretText, removeHotWallet } = require('../lib/hot-wallet-store');
+const { decodeSecretText, getHotWalletStatuses, removeHotWallet } = require('../lib/hot-wallet-store');
 
 test('decodes JSON-array and base58 secret-key imports in the main-process helper', () => {
   const source = Keypair.generate();
@@ -17,6 +17,16 @@ test('decodes JSON-array and base58 secret-key imports in the main-process helpe
 
 test('rejects invalid secret-key material', () => {
   assert.throws(() => decodeSecretText('[1,2,3]'), /valid Solana secret key/);
+});
+
+test('normalizes legacy DPAPI display metadata to secure storage', async (t) => {
+  const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'batch-sender-hot-wallet-'));
+  t.after(() => fs.rm(userDataPath, { recursive: true, force: true }));
+  await fs.writeFile(path.join(userDataPath, 'hot-wallet.dpapi.json'), JSON.stringify({
+    ciphertext: 'protected', publicKey: Keypair.generate().publicKey.toBase58(), protection: 'Windows DPAPI',
+  }));
+  const statuses = await getHotWalletStatuses(userDataPath);
+  assert.equal(statuses['gm-hot-wallet'].protection, 'Secure storage');
 });
 
 test('requires explicit confirmation before removing a protected secret key', async (t) => {
