@@ -40,4 +40,4 @@ On Windows, after `npm ci` has been run once, double-click `launch-batch-sender.
 
 Double-click `create-desktop-shortcut.vbs` once to create a **Batch Sender** desktop shortcut with the Aephia app icon. The shortcut targets the terminal-free launcher and automatically uses the current checkout location.
 
-The in-app updater checks the public `aephiaviktor/batch-sender` GitHub repository anonymously. Installing an update fast-forwards the local Git checkout, refreshes dependencies, and relaunches the app; no GitHub account or token is required.
+The in-app updater checks the public `aephiaviktor/batch-sender` GitHub repository anonymously. Installing downloads the public `main` archive, overlays it onto the app folder after Electron exits, runs `npm ci` (falling back to `npm install`), and restarts the app. Git and a GitHub account or token are not required.

@@ -35,6 +35,7 @@ const APP_ROOT = path.resolve(__dirname, '..');
 const AEPHIA_VALIDATION_TTL_MS = 5 * 60 * 1000;
 const GITHUB_REPO = 'aephiaviktor/batch-sender';
 const GITHUB_PACKAGE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/package.json`;
+const GITHUB_MAIN_ARCHIVE_URL = `https://codeload.github.com/${GITHUB_REPO}/tar.gz/refs/heads/main`;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -128,14 +129,14 @@ async function requireValidAephiaKey() {
   if (!status.valid) throw new Error(status.message || 'A valid Aephia API key is required.');
 }
 
-async function runRepoCommand(command, args) {
+async function runCommand(command, args, cwd = APP_ROOT, timeout = 120000) {
   let executable = command;
   let commandArgs = args;
   if (process.platform === 'win32' && command === 'npm') {
     executable = process.env.ComSpec || 'cmd.exe';
     commandArgs = ['/d', '/s', '/c', 'npm.cmd', ...args];
   }
-  const result = await execFileAsync(executable, commandArgs, { cwd: APP_ROOT, windowsHide: true, timeout: 120000 });
+  const result = await execFileAsync(executable, commandArgs, { cwd, windowsHide: true, timeout });
   return String(result.stdout || '').trim();
 }
 
@@ -155,23 +156,58 @@ async function checkForUpdates() {
 }
 
 async function installUpdate() {
-  const dirty = await runRepoCommand('git', ['status', '--porcelain']);
-  if (dirty) throw new Error('Update stopped because the Batch Sender folder has local changes.');
-  await runRepoCommand('git', ['pull', '--ff-only', 'origin', 'main']);
+  const response = await fetch(`${GITHUB_MAIN_ARCHIVE_URL}?t=${Date.now()}`, {
+    headers: { 'User-Agent': 'batch-sender-updater' },
+  });
+  if (!response.ok) throw new Error(`Public GitHub archive download failed: HTTP ${response.status}.`);
+
+  const stagingPath = await fs.mkdtemp(path.join(app.getPath('temp'), 'batch-sender-update-'));
+  const archivePath = path.join(stagingPath, 'main.tar.gz');
+  await fs.writeFile(archivePath, Buffer.from(await response.arrayBuffer()));
+  await runCommand('tar', ['-xzf', archivePath, '-C', stagingPath], stagingPath);
+  const entries = await fs.readdir(stagingPath, { withFileTypes: true });
+  const sourceEntry = entries.find((entry) => entry.isDirectory());
+  if (!sourceEntry) throw new Error('The downloaded GitHub archive did not contain an app folder.');
+  const sourcePath = path.join(stagingPath, sourceEntry.name);
+  const sourcePackage = JSON.parse(await fs.readFile(path.join(sourcePath, 'package.json'), 'utf8'));
+  if (!/^\d+\.\d+\.\d+$/.test(String(sourcePackage?.version || ''))) {
+    throw new Error('The downloaded GitHub archive has an invalid package version.');
+  }
+
   if (process.platform === 'win32') {
-    const command = 'ping 127.0.0.1 -n 3 >nul && npm.cmd ci && npm.cmd start';
-    const helper = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {
-      cwd: APP_ROOT,
+    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    const scriptPath = path.join(stagingPath, 'install-update.ps1');
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      'Start-Sleep -Seconds 2',
+      `$source = ${quote(sourcePath)}`,
+      `$destination = ${quote(APP_ROOT)}`,
+      `$staging = ${quote(stagingPath)}`,
+      'Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $destination -Recurse -Force',
+      'Set-Location -LiteralPath $destination',
+      '& npm.cmd ci',
+      'if ($LASTEXITCODE -ne 0) { & npm.cmd install }',
+      "if ($LASTEXITCODE -ne 0) { throw 'npm dependency installation failed.' }",
+      "Start-Process -FilePath 'npm.cmd' -ArgumentList 'start' -WorkingDirectory $destination -WindowStyle Hidden",
+      'Remove-Item -LiteralPath $staging -Recurse -Force',
+    ].join('\r\n');
+    await fs.writeFile(scriptPath, script, 'utf8');
+    const helper = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
+      cwd: stagingPath,
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
     });
     helper.unref();
-    setImmediate(() => app.exit(0));
   } else {
-    await runRepoCommand('npm', ['ci']);
-    setImmediate(() => { app.relaunch(); app.exit(0); });
+    const shellQuote = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
+    const scriptPath = path.join(stagingPath, 'install-update.sh');
+    const script = `#!/bin/sh\nset -e\nsleep 2\ncp -R ${shellQuote(sourcePath)}/. ${shellQuote(APP_ROOT)}/\ncd ${shellQuote(APP_ROOT)}\nnpm ci || npm install\nrm -rf ${shellQuote(stagingPath)}\nexec npm start\n`;
+    await fs.writeFile(scriptPath, script, { encoding: 'utf8', mode: 0o700 });
+    const helper = spawn('/bin/sh', [scriptPath], { cwd: stagingPath, detached: true, stdio: 'ignore' });
+    helper.unref();
   }
+  setImmediate(() => app.exit(0));
   return { ok: true, restarting: true };
 }
 
