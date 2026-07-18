@@ -38,6 +38,8 @@ h2 { margin: 0; font-size: 18px; }
 .sender-card strong, .sender-card span { display: block; }
 .sender-card span { margin-top: 4px; color: var(--muted); font-size: 12px; }
 .sender-card .ready { color: var(--cyan); }
+.add-wallet-card { border-style: dashed; color: var(--cyan); }
+.danger-text { color: var(--danger); }
 .address-row { gap: 10px; margin-top: 9px; color: var(--muted); }
 .address-row code { color: var(--text); }
 .button, .icon-button { border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
@@ -96,5 +98,12 @@ tbody tr:last-child td { border-bottom: 0; }
 .sensitive-field { transition: filter .15s ease; }
 .sensitive-hidden .sensitive-field { filter: blur(5px); }
 .update-modal { width: min(560px, 100%); }
+.wallet-modal { width: min(620px, 100%); }
+.wallet-type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wallet-type-card { padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); text-align: left; cursor: pointer; }
+.wallet-type-card:hover { border-color: var(--cyan); }
+.wallet-type-card strong, .wallet-type-card span { display: block; }
+.wallet-type-card span { margin-top: 6px; color: var(--muted); }
+#wallet-form > label, #hot-fields > label { display: block; margin-bottom: 12px; }
 .shell.locked > section, .shell.locked > footer { opacity: .32; pointer-events: none; filter: saturate(.4); }
 @media (max-width: 940px) { .sender-grid { grid-template-columns: repeat(2, 1fr); } }

@@ -11,17 +11,19 @@ const { PublicKey, Transaction } = require('@solana/web3.js');
 const { createConnection, getEligibleBalances } = require('../lib/balances');
 const { readAephiaKey, saveAephiaKey, validateAephiaKey } = require('../lib/aephia-auth');
 const { parseTokenAmount, formatBaseUnits } = require('../lib/amounts');
-const { getHotWalletStatus, importHotWallet, loadHotWallet, removeHotWallet } = require('../lib/hot-wallet-store');
-const { signTransactionWithLedger } = require('../lib/ledger-signer');
+const { getHotWalletStatuses, importHotWallet, loadHotWallet, removeHotWallet } = require('../lib/hot-wallet-store');
+const { detectLedgerWallets, signTransactionWithLedger } = require('../lib/ledger-signer');
 const {
+  addWallet,
   loadPublicConfig,
   loadRecipients,
+  removeWallet,
   saveLedgerDerivationPath,
   savePublicConfig,
   saveRecipient,
 } = require('../lib/local-store');
 const { planBatchTransactions } = require('../lib/planner');
-const { SENDER_PROFILES, getSenderProfile } = require('../lib/profiles');
+const { getSenderProfile } = require('../lib/profiles');
 
 const APP_NAME = 'Batch Sender';
 const PREVIEW_TTL_MS = 5 * 60 * 1000;
@@ -76,34 +78,26 @@ function installMenu() {
   ]));
 }
 
-function publicProfileState(config) {
-  return SENDER_PROFILES.map((profile) => {
-    const stored = config.profiles?.[profile.id] || {};
-    let address = '';
-    try {
-      address = new PublicKey(String(stored.address || '').trim()).toBase58();
-    } catch {
-      address = '';
-    }
-    return {
-      ...profile,
-      address,
-      configured: Boolean(address && config.rpcUrl),
-      derivationPath: profile.kind === 'ledger' ? String(stored.derivationPath || '').trim() : '',
-    };
-  });
+function publicProfileState(config, hotWallets = {}) {
+  return config.wallets.map((wallet) => ({
+    ...wallet,
+    configured: Boolean(wallet.address && config.rpcUrl),
+    signerReady: wallet.kind === 'ledger' || Boolean(hotWallets[wallet.id]?.configured),
+    protection: hotWallets[wallet.id]?.protection || '',
+  }));
 }
 
 async function getState() {
   const userDataPath = app.getPath('userData');
   const config = await loadPublicConfig(userDataPath);
+  const hotWallets = await getHotWalletStatuses(userDataPath);
   const aephia = await getAephiaStatus();
   return {
     ok: true,
     version: require('../package.json').version,
-    profiles: publicProfileState(config),
+    profiles: publicProfileState(config, hotWallets),
     recipients: await loadRecipients(userDataPath),
-    hotWallet: await getHotWalletStatus(userDataPath),
+    hotWallets,
     rpcUrl: config.rpcUrl,
     rpcConfigured: Boolean(config.rpcUrl),
     configPath: path.join(userDataPath, 'config.json'),
@@ -181,35 +175,49 @@ async function installUpdate() {
   return { ok: true, restarting: true };
 }
 
-async function saveHotWalletSecret(payload) {
-  let expectedPublicKey;
+async function addHotWallet(payload) {
+  const userDataPath = app.getPath('userData');
+  const walletId = `wallet-${randomUUID()}`;
+  const status = await importHotWallet(userDataPath, safeStorage, walletId, payload?.secretKey);
   try {
-    expectedPublicKey = new PublicKey(String(payload?.expectedPublicKey || '').trim()).toBase58();
-  } catch {
-    throw new Error('Configure a valid GM hot-wallet public address before saving its signing secret.');
+    await addWallet(userDataPath, { id: walletId, name: payload?.name, kind: 'hot-wallet', address: status.publicKey });
+  } catch (error) {
+    await removeHotWallet(userDataPath, walletId, true).catch(() => undefined);
+    throw error;
   }
-  return {
-    ok: true,
-    ...(await importHotWallet(
-      app.getPath('userData'),
-      safeStorage,
-      payload?.secret,
-      expectedPublicKey,
-      payload?.replaceConfirmed === true,
-    )),
-  };
+  return getState();
+}
+
+async function addLedgerWallet(payload) {
+  const detected = await detectLedgerWallets(payload?.derivationPath);
+  const selected = detected[Number(payload?.deviceIndex || 0)];
+  if (!selected) throw new Error('Select a detected Ledger.');
+  await addWallet(app.getPath('userData'), {
+    name: payload?.name,
+    kind: 'ledger',
+    address: selected.address,
+    derivationPath: selected.derivationPath,
+  });
+  return getState();
+}
+
+async function deleteWallet(payload) {
+  if (payload?.removeConfirmed !== true) throw new Error('Removing a wallet requires explicit confirmation.');
+  const userDataPath = app.getPath('userData');
+  const wallet = await removeWallet(userDataPath, String(payload?.walletId || ''));
+  if (wallet.kind === 'hot-wallet') await removeHotWallet(userDataPath, wallet.id, true);
+  return getState();
 }
 
 async function getProfileContext(profileId) {
-  const profile = getSenderProfile(String(profileId || ''));
-  if (!profile) throw new Error('Unknown sender profile.');
   const config = await loadPublicConfig(app.getPath('userData'));
-  const stored = config.profiles?.[profile.id] || {};
+  const profile = getSenderProfile(config.wallets, String(profileId || ''));
+  if (!profile) throw new Error('Unknown sender wallet.');
   let owner;
   try {
-    owner = new PublicKey(String(stored.address || '').trim());
+    owner = new PublicKey(String(profile.address || '').trim());
   } catch {
-    throw new Error(`${profile.name} public address is not configured.`);
+    throw new Error(`${profile.name} public address is invalid.`);
   }
   return { profile, config, owner, connection: createConnection(config.rpcUrl) };
 }
@@ -389,14 +397,14 @@ async function signPlannedTransaction(execution, transaction, ledgerPath, onProg
       async (matchedLedgerPath) => {
         if (matchedLedgerPath === ledgerPath) return;
         await saveLedgerDerivationPath(app.getPath('userData'), execution.profile.id, matchedLedgerPath);
-        onProgress(`Saved ${matchedLedgerPath} for future ${execution.profile.label} sends.`);
+        onProgress(`Saved ${matchedLedgerPath} for future ${execution.profile.name} sends.`);
       },
     );
     return { transaction: signed.transaction, ledgerPath: signed.ledgerPath };
   }
 
-  onProgress('Loading the protected GM hot-wallet signer…');
-  const signer = await loadHotWallet(app.getPath('userData'), safeStorage, execution.owner.toBase58());
+  onProgress('Loading the protected hot-wallet secret key…');
+  const signer = await loadHotWallet(app.getPath('userData'), safeStorage, execution.profile.id, execution.owner.toBase58());
   transaction.sign(signer);
   return { transaction, ledgerPath: '' };
 }
@@ -418,8 +426,7 @@ async function sendPreviewedBatch(payload, onProgress = () => undefined) {
     throw new Error('The selected sender does not have enough SOL for the estimated fees and ATA rent.');
   }
 
-  const profileConfig = execution.config.profiles?.[execution.profile.id] || {};
-  let ledgerPath = String(profileConfig.derivationPath || '').trim();
+  let ledgerPath = String(execution.profile.derivationPath || '').trim();
   const results = [];
 
   for (let index = 0; index < execution.plan.chunkGroups.length; index += 1) {
@@ -532,11 +539,10 @@ ipcMain.handle('batch:save-settings', safeResult(async (payload) => {
   aephiaValidation.checkedAt = 0;
   return getState();
 }));
-ipcMain.handle('batch:save-hot-wallet-secret', safeResult(saveHotWalletSecret));
-ipcMain.handle('batch:remove-hot-wallet-secret', safeResult(async (payload) => ({
-  ok: true,
-  ...(await removeHotWallet(app.getPath('userData'), payload?.removeConfirmed === true)),
-})));
+ipcMain.handle('batch:detect-ledgers', safeResult(async () => ({ ok: true, wallets: await detectLedgerWallets() })));
+ipcMain.handle('batch:add-ledger-wallet', safeResult(addLedgerWallet));
+ipcMain.handle('batch:add-hot-wallet', safeResult(addHotWallet));
+ipcMain.handle('batch:remove-wallet', safeResult(deleteWallet));
 ipcMain.handle('batch:preview', safeResult(async (payload) => {
   await requireValidAephiaKey();
   return previewBatch(payload);

@@ -28,14 +28,21 @@ const els = {
   saveSettings: document.getElementById('save-settings-btn'),
   settingsMessage: document.getElementById('settings-message'),
   settingsRpc: document.getElementById('settings-rpc'),
-  settingsMudAddress: document.getElementById('settings-mud-address'),
-  settingsOniAddress: document.getElementById('settings-oni-address'),
-  settingsUsturAddress: document.getElementById('settings-ustur-address'),
-  settingsGmAddress: document.getElementById('settings-gm-address'),
-  settingsGmSecret: document.getElementById('settings-gm-secret'),
-  settingsGmSecretStatus: document.getElementById('settings-gm-secret-status'),
-  removeGmSecret: document.getElementById('remove-gm-secret-btn'),
   settingsAephiaKey: document.getElementById('settings-aephia-key'),
+  removeWallet: document.getElementById('remove-wallet-btn'),
+  walletModal: document.getElementById('wallet-modal'),
+  closeWallet: document.getElementById('close-wallet-btn'),
+  chooseLedger: document.getElementById('choose-ledger-btn'),
+  chooseHot: document.getElementById('choose-hot-btn'),
+  walletTypeRow: document.getElementById('wallet-type-row'),
+  walletForm: document.getElementById('wallet-form'),
+  walletName: document.getElementById('wallet-name'),
+  walletSecretKey: document.getElementById('wallet-secret-key'),
+  ledgerFields: document.getElementById('ledger-fields'),
+  hotFields: document.getElementById('hot-fields'),
+  walletMessage: document.getElementById('wallet-message'),
+  walletBack: document.getElementById('wallet-back-btn'),
+  addWalletConfirm: document.getElementById('add-wallet-confirm-btn'),
   settingsGrid: document.getElementById('settings-grid'),
   toggleSensitive: document.getElementById('toggle-sensitive-btn'),
   updateButton: document.getElementById('update-btn'),
@@ -49,7 +56,7 @@ const els = {
 
 const state = {
   profiles: [], recipients: [], balances: [], selectedProfileId: '', busy: false, configPath: '', rpcUrl: '',
-  hotWallet: { configured: false, publicKey: '', protection: '' }, currentPreview: null,
+  hotWallets: {}, currentPreview: null, walletKind: '',
   aephia: { configured: false, valid: false, message: 'Aephia API key is required.' },
 };
 
@@ -70,28 +77,8 @@ function selectedProfile() {
   return state.profiles.find((profile) => profile.id === state.selectedProfileId) || null;
 }
 
-function profileById(id) {
-  return state.profiles.find((profile) => profile.id === id) || {};
-}
-
 function openSettings() {
-  const mud = profileById('mud-ledger');
-  const oni = profileById('oni-ledger');
-  const ustur = profileById('ustur-ledger');
-  const gm = profileById('gm-hot-wallet');
   els.settingsRpc.value = state.rpcUrl || '';
-  els.settingsMudAddress.value = mud.address || '';
-  els.settingsOniAddress.value = oni.address || '';
-  els.settingsUsturAddress.value = ustur.address || '';
-  els.settingsGmAddress.value = gm.address || '';
-  els.settingsGmSecret.value = '';
-  els.settingsGmSecret.placeholder = state.hotWallet.configured
-    ? 'Leave blank to keep the protected signing secret'
-    : 'Paste a base58 secret or JSON byte array';
-  els.settingsGmSecretStatus.textContent = state.hotWallet.configured
-    ? `Configured for ${shortKey(state.hotWallet.publicKey)} · ${state.hotWallet.protection}`
-    : 'No protected signing secret configured.';
-  els.removeGmSecret.hidden = !state.hotWallet.configured;
   els.settingsAephiaKey.value = '';
   els.settingsAephiaKey.placeholder = state.aephia.configured
     ? 'Leave blank to keep the saved key'
@@ -105,7 +92,6 @@ function openSettings() {
 function setSensitiveVisible(visible) {
   els.settingsGrid.classList.toggle('sensitive-hidden', !visible);
   els.settingsAephiaKey.type = visible ? 'text' : 'password';
-  els.settingsGmSecret.type = visible ? 'text' : 'password';
   els.settingsRpc.type = visible ? 'url' : 'password';
   els.toggleSensitive.textContent = visible ? 'Hide sensitive' : 'Show sensitive';
   els.toggleSensitive.dataset.visible = String(visible);
@@ -130,101 +116,90 @@ async function saveSettings() {
   if (state.busy) return;
   state.busy = true;
   els.saveSettings.disabled = true;
-  els.closeSettings.disabled = true;
-  els.cancelSettings.disabled = true;
   els.settingsMessage.hidden = false;
   els.settingsMessage.classList.remove('error');
   els.settingsMessage.textContent = 'Validating and saving settings…';
-  let signingSecret = els.settingsGmSecret.value;
-  const replaceConfirmed = !signingSecret || !state.hotWallet.configured || window.confirm(
-    'Replace the currently protected GM signing secret? The existing secret cannot be recovered afterward.',
-  );
-  if (!replaceConfirmed) {
-    state.busy = false;
-    els.saveSettings.disabled = false;
-    els.closeSettings.disabled = false;
-    els.cancelSettings.disabled = false;
-    els.settingsMessage.textContent = 'Signing-secret replacement canceled. No settings were changed.';
-    return;
-  }
-  const saveRequest = window.batchSender.saveSettings({
-    rpcUrl: els.settingsRpc.value,
-    profiles: {
-      'mud-ledger': { address: els.settingsMudAddress.value },
-      'oni-ledger': { address: els.settingsOniAddress.value },
-      'ustur-ledger': { address: els.settingsUsturAddress.value },
-      'gm-hot-wallet': { address: els.settingsGmAddress.value },
-    },
-    aephiaApiKey: els.settingsAephiaKey.value,
-  });
-  const secretRequest = signingSecret
-    ? window.batchSender.saveHotWalletSecret({
-      secret: signingSecret,
-      expectedPublicKey: els.settingsGmAddress.value,
-      replaceConfirmed,
-    })
-    : Promise.resolve(null);
-  signingSecret = '';
-  els.settingsAephiaKey.value = '';
-  els.settingsGmSecret.value = '';
-  const [result, secretResult] = await Promise.all([saveRequest, secretRequest]);
-  if (secretResult && !secretResult.ok) {
-    result.ok = false;
-    result.message = secretResult.message || 'The signing secret could not be protected.';
-  } else if (secretResult) {
-    result.hotWallet = secretResult;
-  }
+  const result = await window.batchSender.saveSettings({ rpcUrl: els.settingsRpc.value, aephiaApiKey: els.settingsAephiaKey.value });
   state.busy = false;
   els.saveSettings.disabled = false;
-  els.closeSettings.disabled = false;
-  els.cancelSettings.disabled = false;
+  els.settingsAephiaKey.value = '';
   if (!result?.ok) {
     els.settingsMessage.classList.add('error');
     els.settingsMessage.textContent = result?.message || 'Settings could not be saved.';
     return;
   }
-  state.profiles = result.profiles || [];
-  state.rpcUrl = result.rpcUrl || '';
-  state.hotWallet = result.hotWallet || state.hotWallet;
-  state.aephia = result.aephia || state.aephia;
-  state.configPath = result.configPath || state.configPath;
+  applyState(result);
   renderAuthGate();
   if (state.aephia.valid) els.settingsModal.hidden = true;
-  state.balances = [];
   renderProfiles();
   renderBalances();
   els.status.textContent = 'Wallet settings saved locally.';
-  await loadBalances();
+  if (selectedProfile()) await loadBalances();
+}
+
+function applyState(result) {
+  state.profiles = result.profiles || [];
+  state.hotWallets = result.hotWallets || {};
+  state.rpcUrl = result.rpcUrl || '';
+  state.aephia = result.aephia || state.aephia;
+  state.configPath = result.configPath || state.configPath;
+  if (!state.profiles.some((row) => row.id === state.selectedProfileId)) state.selectedProfileId = state.profiles[0]?.id || '';
+}
+
+function openWalletModal() {
+  state.walletKind = '';
+  els.walletTypeRow.hidden = false;
+  els.walletForm.hidden = true;
+  els.walletBack.hidden = true;
+  els.addWalletConfirm.hidden = true;
+  els.walletMessage.hidden = true;
+  els.walletName.value = '';
+  els.walletSecretKey.value = '';
+  els.walletModal.hidden = false;
+}
+
+function chooseWalletKind(kind) {
+  state.walletKind = kind;
+  els.walletTypeRow.hidden = true;
+  els.walletForm.hidden = false;
+  els.walletBack.hidden = false;
+  els.addWalletConfirm.hidden = false;
+  els.ledgerFields.hidden = kind !== 'ledger';
+  els.hotFields.hidden = kind !== 'hot-wallet';
+  els.addWalletConfirm.textContent = kind === 'ledger' ? 'Detect & add Ledger' : 'Add hot wallet';
+}
+
+async function addSelectedWallet() {
+  if (state.busy) return;
+  const name = els.walletName.value.trim();
+  if (!name) { els.walletMessage.hidden = false; els.walletMessage.classList.add('error'); els.walletMessage.textContent = 'Enter a wallet name.'; return; }
+  state.busy = true; els.addWalletConfirm.disabled = true; els.closeWallet.disabled = true;
+  els.walletMessage.hidden = false; els.walletMessage.classList.remove('error');
+  els.walletMessage.textContent = state.walletKind === 'ledger' ? 'Looking for connected Ledger devices…' : 'Deriving the public address and protecting the secret key…';
+  const result = state.walletKind === 'ledger'
+    ? await window.batchSender.addLedgerWallet({ name })
+    : await window.batchSender.addHotWallet({ name, secretKey: els.walletSecretKey.value });
+  state.busy = false; els.addWalletConfirm.disabled = false; els.closeWallet.disabled = false;
+  if (!result?.ok) { els.walletMessage.classList.add('error'); els.walletMessage.textContent = result?.message || 'Wallet could not be added.'; return; }
+  applyState(result); els.walletSecretKey.value = ''; els.walletModal.hidden = true;
+  renderProfiles(); renderBalances(); await loadBalances();
 }
 
 function renderProfiles() {
   els.senderGrid.replaceChildren();
   for (const profile of state.profiles) {
-    const button = document.createElement('button');
-    button.type = 'button';
+    const button = document.createElement('button'); button.type = 'button';
     button.className = `sender-card${profile.id === state.selectedProfileId ? ' selected' : ''}`;
-    const title = document.createElement('strong');
-    title.textContent = profile.name;
-    const detail = document.createElement('span');
-    const hotSignerReady = profile.kind !== 'hot-wallet'
-      || (state.hotWallet.configured && state.hotWallet.publicKey === profile.address);
-    detail.className = profile.configured && hotSignerReady ? 'ready' : '';
-    detail.textContent = !profile.configured
-      ? 'Configuration needed'
-      : profile.kind === 'ledger'
-        ? 'Hardware wallet · Ready'
-        : hotSignerReady
-          ? `${state.hotWallet.protection || 'Protected signer'} · Ready`
-          : 'Address ready · Signing key needed';
-    button.append(title, detail);
-    button.addEventListener('click', () => selectProfile(profile.id));
-    els.senderGrid.appendChild(button);
+    const title = document.createElement('strong'); title.textContent = profile.name;
+    const detail = document.createElement('span'); detail.className = profile.configured && profile.signerReady ? 'ready' : '';
+    detail.textContent = profile.kind === 'ledger' ? 'Hardware wallet · Ready' : `${profile.protection || 'Windows DPAPI'} · Ready`;
+    button.append(title, detail); button.addEventListener('click', () => selectProfile(profile.id)); els.senderGrid.appendChild(button);
   }
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'sender-card add-wallet-card';
+  add.innerHTML = '<strong>+ Add wallet</strong><span>Hardware or hot wallet</span>'; add.addEventListener('click', openWalletModal); els.senderGrid.appendChild(add);
   const profile = selectedProfile();
-  els.senderAddress.textContent = profile?.address ? shortKey(profile.address) : 'Not configured';
-  els.senderAddress.title = profile?.address || '';
-  els.copySender.disabled = !profile?.address;
-
+  els.senderAddress.textContent = profile?.address ? shortKey(profile.address) : 'No wallet selected';
+  els.senderAddress.title = profile?.address || ''; els.copySender.disabled = !profile?.address; els.removeWallet.disabled = !profile;
 }
 
 function renderRecipients() {
@@ -319,7 +294,7 @@ async function loadBalances() {
     state.balances = [];
     renderBalances();
     els.configMessage.hidden = false;
-    els.configMessage.textContent = 'Open Wallet settings to add this profile’s public address and the Solana RPC URL.';
+    els.configMessage.textContent = 'Open Wallet settings and configure the Solana RPC URL before loading balances.';
     return;
   }
   els.configMessage.hidden = true;
@@ -406,11 +381,10 @@ function showPreview(result) {
     ]));
   }
 
-  const signerReady = result.sender.kind === 'ledger'
-    || (state.hotWallet.configured && state.hotWallet.publicKey === result.sender.address);
+  const signerReady = result.sender.kind === 'ledger' || Boolean(state.hotWallets[result.sender.id]?.configured);
   els.previewNotice.classList.toggle('error', !result.plan.hasEnoughSol || !signerReady);
   els.previewNotice.textContent = !signerReady
-    ? 'The protected GM hot-wallet signing secret must be configured in Wallet settings before sending.'
+    ? 'The selected hot wallet has no protected secret key.'
     : result.plan.hasEnoughSol
       ? result.notice
       : `Insufficient SOL for the estimated ${formatSol(result.plan.estimatedTotalLamports)} cost. ${result.notice}`;
@@ -498,13 +472,8 @@ async function initialize() {
   const result = await window.batchSender.getState();
   if (!result?.ok) { els.status.textContent = result?.message || 'App initialization failed.'; return; }
   els.appVersion.textContent = result.version ? `v${result.version}` : 'v?';
-  state.profiles = result.profiles || [];
+  applyState(result);
   state.recipients = result.recipients || [];
-  state.configPath = result.configPath || '';
-  state.rpcUrl = result.rpcUrl || '';
-  state.hotWallet = result.hotWallet || state.hotWallet;
-  state.aephia = result.aephia || state.aephia;
-  state.selectedProfileId = state.profiles[0]?.id || '';
   renderProfiles();
   renderRecipients();
   renderAuthGate();
@@ -558,31 +527,18 @@ for (const button of [els.closeSettings, els.cancelSettings]) button.addEventLis
   if (!state.busy) els.settingsModal.hidden = true;
 });
 els.copySender.addEventListener('click', async () => { const value = selectedProfile()?.address; if (value) await navigator.clipboard.writeText(value); });
-els.removeGmSecret.addEventListener('click', async () => {
-  if (state.busy || !state.hotWallet.configured) return;
-  const confirmed = window.confirm('Remove the protected GM signing secret from this computer? This cannot be undone.');
-  if (!confirmed) return;
-  state.busy = true;
-  els.removeGmSecret.disabled = true;
-  const result = await window.batchSender.removeHotWalletSecret(true);
-  state.busy = false;
-  els.removeGmSecret.disabled = false;
-  if (!result?.ok) {
-    els.settingsMessage.hidden = false;
-    els.settingsMessage.classList.add('error');
-    els.settingsMessage.textContent = result?.message || 'The protected signing secret could not be removed.';
-    return;
-  }
-  state.hotWallet = result;
-  els.settingsGmSecret.value = '';
-  els.settingsGmSecretStatus.textContent = 'No protected signing secret configured.';
-  els.removeGmSecret.hidden = true;
-  els.settingsMessage.hidden = false;
-  els.settingsMessage.classList.remove('error');
-  els.settingsMessage.textContent = 'Protected GM signing secret removed.';
-  renderProfiles();
-  updateActions();
+els.removeWallet.addEventListener('click', async () => {
+  const wallet = selectedProfile();
+  if (!wallet || state.busy || !window.confirm(`Remove ${wallet.name}?${wallet.kind === 'hot-wallet' ? ' Its DPAPI-protected secret key will also be deleted.' : ''}`)) return;
+  const result = await window.batchSender.removeWallet(wallet.id, true);
+  if (!result?.ok) { els.status.textContent = result?.message || 'Wallet could not be removed.'; return; }
+  applyState(result); state.balances = []; renderProfiles(); renderBalances(); updateActions();
 });
+els.chooseLedger.addEventListener('click', () => chooseWalletKind('ledger'));
+els.chooseHot.addEventListener('click', () => chooseWalletKind('hot-wallet'));
+els.walletBack.addEventListener('click', openWalletModal);
+els.addWalletConfirm.addEventListener('click', addSelectedWallet);
+els.closeWallet.addEventListener('click', () => { if (!state.busy) els.walletModal.hidden = true; });
 els.recipientSelect.addEventListener('change', () => {
   if (els.recipientSelect.value) {
     els.recipient.value = els.recipientSelect.value;

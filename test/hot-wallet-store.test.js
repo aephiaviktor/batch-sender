@@ -9,25 +9,23 @@ const path = require('node:path');
 const { Keypair } = require('@solana/web3.js');
 const { decodeSecretText, removeHotWallet } = require('../lib/hot-wallet-store');
 
-test('decodes JSON-array and base58 keypair imports in the main-process helper', () => {
+test('decodes JSON-array and base58 secret-key imports in the main-process helper', () => {
   const source = Keypair.generate();
-  const fromJson = decodeSecretText(JSON.stringify(Array.from(source.secretKey)));
-  const fromBase58 = decodeSecretText((bs58.encode || bs58.default.encode)(source.secretKey));
-  assert.equal(fromJson.publicKey.toBase58(), source.publicKey.toBase58());
-  assert.equal(fromBase58.publicKey.toBase58(), source.publicKey.toBase58());
+  assert.equal(decodeSecretText(JSON.stringify(Array.from(source.secretKey))).publicKey.toBase58(), source.publicKey.toBase58());
+  assert.equal(decodeSecretText((bs58.encode || bs58.default.encode)(source.secretKey)).publicKey.toBase58(), source.publicKey.toBase58());
 });
 
-test('rejects invalid key material', () => {
-  assert.throws(() => decodeSecretText('[1,2,3]'), /valid Solana keypair/);
+test('rejects invalid secret-key material', () => {
+  assert.throws(() => decodeSecretText('[1,2,3]'), /valid Solana secret key/);
 });
 
-test('requires explicit confirmation before removing the protected signing secret', async () => {
+test('requires explicit confirmation before removing a protected secret key', async (t) => {
   const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'batch-sender-hot-wallet-'));
-  const storeFile = path.join(userDataPath, 'hot-wallet.dpapi.json');
-  await fs.writeFile(storeFile, '{"ciphertext":"protected"}');
-  await assert.rejects(removeHotWallet(userDataPath), /explicit confirmation/);
-  assert.equal(await fs.readFile(storeFile, 'utf8'), '{"ciphertext":"protected"}');
-  assert.deepEqual(await removeHotWallet(userDataPath, true), { configured: false, publicKey: '', protection: '' });
-  await assert.rejects(fs.stat(storeFile), { code: 'ENOENT' });
-  await fs.rm(userDataPath, { recursive: true, force: true });
+  t.after(() => fs.rm(userDataPath, { recursive: true, force: true }));
+  const storeFile = path.join(userDataPath, 'hot-wallets.dpapi.json');
+  await fs.writeFile(storeFile, JSON.stringify({ version: 2, wallets: { abc: { ciphertext: 'protected', publicKey: 'key' } } }));
+  await assert.rejects(removeHotWallet(userDataPath, 'abc'), /explicit confirmation/);
+  assert.deepEqual(await removeHotWallet(userDataPath, 'abc', true), { configured: false, publicKey: '', protection: '' });
+  const stored = JSON.parse(await fs.readFile(storeFile, 'utf8'));
+  assert.deepEqual(stored.wallets, {});
 });

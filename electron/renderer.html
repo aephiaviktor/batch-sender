@@ -25,6 +25,7 @@
         <span>Sender address</span>
         <code id="sender-address">Not configured</code>
         <button id="copy-sender-btn" class="icon-button" type="button" title="Copy full sender address" disabled>Copy</button>
+        <button id="remove-wallet-btn" class="icon-button danger-text" type="button" disabled>Remove wallet</button>
       </div>
       <p id="config-message" class="notice" hidden></p>
     </section>
@@ -85,23 +86,34 @@
   <div id="settings-modal" class="modal-backdrop" hidden>
     <section class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="modal-header"><div><p class="eyebrow">LOCAL CONFIGURATION</p><h2 id="settings-title">Wallet settings</h2></div><div class="settings-header-actions"><button id="toggle-sensitive-btn" class="button secondary" type="button">Show sensitive</button><button id="close-settings-btn" class="icon-button" type="button">Close</button></div></div>
-      <p class="subtitle settings-intro">Public settings are stored locally. The GM signing secret is encrypted with Windows DPAPI and is never displayed again.</p>
+      <p class="subtitle settings-intro">Shared app settings are stored locally. Add and manage sender wallets from the main window.</p>
       <div class="settings-grid sensitive-hidden" id="settings-grid">
         <label class="settings-wide"><span>Aephia API key</span><input class="sensitive-field" id="settings-aephia-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a new key or leave blank to keep the saved key"></label>
         <label class="settings-wide"><span>Solana RPC URL</span><input class="sensitive-field" id="settings-rpc" type="password" spellcheck="false" placeholder="https://…"></label>
-        <label class="settings-wide"><span>MUD Ledger public address</span><input id="settings-mud-address" type="text" spellcheck="false"></label>
-        <label class="settings-wide"><span>ONI Ledger public address</span><input id="settings-oni-address" type="text" spellcheck="false"></label>
-        <label class="settings-wide"><span>USTUR Ledger public address</span><input id="settings-ustur-address" type="text" spellcheck="false"></label>
-        <label class="settings-wide"><span>GM Market Bot hot-wallet public address</span><input id="settings-gm-address" type="text" spellcheck="false"></label>
-        <label class="settings-wide"><span>GM signing secret</span><input class="sensitive-field" id="settings-gm-secret" type="password" autocomplete="new-password" spellcheck="false" placeholder="Paste a base58 secret or JSON byte array"></label>
-        <div class="settings-wide signing-secret-status-row">
-          <span id="settings-gm-secret-status">No protected signing secret configured.</span>
-          <button id="remove-gm-secret-btn" class="button danger" type="button" hidden>Remove signing secret</button>
-        </div>
       </div>
-      <p class="subtitle settings-intro ledger-note">Ledger derivation paths are detected automatically. Signing secrets are handled only by the Electron main process and stored solely as a DPAPI-encrypted blob.</p>
+      <p class="subtitle settings-intro ledger-note">Wallets are added and managed from the Select sender section. Secret keys never enter the renderer after import.</p>
       <p id="settings-message" class="notice" hidden></p>
       <div class="modal-actions"><button id="cancel-settings-btn" class="button secondary" type="button">Cancel</button><button id="save-settings-btn" class="button primary" type="button">Save settings</button></div>
+    </section>
+  </div>
+
+  <div id="wallet-modal" class="modal-backdrop" hidden>
+    <section class="modal wallet-modal" role="dialog" aria-modal="true" aria-labelledby="wallet-title">
+      <div class="modal-header"><div><p class="eyebrow">WALLET MANAGER</p><h2 id="wallet-title">Add wallet</h2></div><button id="close-wallet-btn" class="icon-button" type="button">Close</button></div>
+      <div id="wallet-type-row" class="wallet-type-row">
+        <button id="choose-ledger-btn" class="wallet-type-card" type="button"><strong>Hardware wallet</strong><span>Connect a Ledger and read its public address automatically.</span></button>
+        <button id="choose-hot-btn" class="wallet-type-card" type="button"><strong>Hot wallet</strong><span>Import a secret key protected locally with Windows DPAPI.</span></button>
+      </div>
+      <div id="wallet-form" hidden>
+        <label><span>Wallet name</span><input id="wallet-name" type="text" maxlength="80" placeholder="e.g. USTUR Ledger"></label>
+        <div id="ledger-fields" hidden><p class="notice">Connect and unlock the Ledger, then open its Solana app. Batch Sender will read and save its public address and derivation path.</p></div>
+        <div id="hot-fields" hidden>
+          <label><span>Secret key</span><input id="wallet-secret-key" type="password" autocomplete="off" spellcheck="false" placeholder="Base58 secret key or JSON byte array"></label>
+          <p class="notice">The secret key is stored only on this Windows computer, encrypted using Windows DPAPI. It is never uploaded and will not be displayed again.</p>
+        </div>
+      </div>
+      <p id="wallet-message" class="notice" hidden></p>
+      <div class="modal-actions"><button id="wallet-back-btn" class="button secondary" type="button" hidden>Back</button><button id="add-wallet-confirm-btn" class="button primary" type="button" hidden>Add wallet</button></div>
     </section>
   </div>
 
