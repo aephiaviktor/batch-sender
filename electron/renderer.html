@@ -102,14 +102,14 @@
       <div class="modal-header"><div><p class="eyebrow">WALLET MANAGER</p><h2 id="wallet-title">Add wallet</h2></div><button id="close-wallet-btn" class="icon-button" type="button">Close</button></div>
       <div id="wallet-type-row" class="wallet-type-row">
         <button id="choose-ledger-btn" class="wallet-type-card" type="button"><strong>Hardware wallet</strong><span>Connect a Ledger and read its public address automatically.</span></button>
-        <button id="choose-hot-btn" class="wallet-type-card" type="button"><strong>Hot wallet</strong><span>Import a secret key protected locally with Windows DPAPI.</span></button>
+        <button id="choose-hot-btn" class="wallet-type-card" type="button"><strong>Hot wallet</strong><span>Import a secret key encrypted using secure storage.</span></button>
       </div>
       <div id="wallet-form" hidden>
         <label><span>Wallet name</span><input id="wallet-name" type="text" maxlength="80" placeholder="e.g. USTUR Ledger"></label>
         <div id="ledger-fields" hidden><p class="notice">Connect and unlock the Ledger, then open its Solana app. Batch Sender will read and save its public address and derivation path.</p></div>
         <div id="hot-fields" hidden>
           <label><span>Secret key</span><input id="wallet-secret-key" type="password" autocomplete="off" spellcheck="false" placeholder="Base58 secret key or JSON byte array"></label>
-          <p class="notice">The secret key is stored only on this Windows computer, encrypted using Windows DPAPI. It is never uploaded and will not be displayed again.</p>
+          <p class="notice">The secret key is stored locally, encrypted using secure storage. It is never uploaded and will not be displayed again.</p>
         </div>
       </div>
       <p id="wallet-message" class="notice" hidden></p>

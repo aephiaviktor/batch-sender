@@ -2,7 +2,7 @@
 
 Standalone Electron app for sending batches of Star Atlas raw materials and components from one selected sender wallet to one recipient.
 
-Users can add any number of Ledger hardware wallets and DPAPI-protected hot wallets.
+Users can add any number of Ledger hardware wallets and securely encrypted hot wallets.
 
 Transactions are built, reviewed, signed, broadcast, and confirmed locally on the main Windows PC.
 
@@ -16,17 +16,17 @@ Transactions are built, reviewed, signed, broadcast, and confirmed locally on th
 - Recipient ATA inspection with idempotent creation planning
 - Deterministic serialized-size transaction splitting and fee/rent estimates
 - Multi-Ledger address/path matching with common-path fallback scanning
-- Multi-wallet Windows `safeStorage`/DPAPI-protected secret-key storage and signing
+- Multi-wallet Electron `safeStorage` secret-key encryption and signing
 - Fresh blockhash per transaction, sequential broadcast/confirmation, and partial-result reporting
 - Comma-formatted token table with search, `MAX`, and `Clear all`
 
-The selected sender currently pays transaction fees and recipient ATA rent. Native Windows hardware and real-transfer verification are still required before release.
+The selected sender currently pays transaction fees and recipient ATA rent. Native hardware and real-transfer verification are still required before release.
 
 ## Wallet setup
 
 Open **Wallet settings** to configure the Solana RPC URL and Aephia API key. The dialog hides both values by default; use **Show sensitive** to reveal them temporarily. Aephia keys copied as a bare token, `Bearer …`, or `AEPHIA_API_KEY=…` are normalized before validation.
 
-Use **Add wallet** in the sender selector for either wallet type. A connected Ledger supplies its public address and derivation path automatically. For a hot wallet, the app derives the public address from the entered secret key, sends the key once through the narrow preload API to the Electron main process, and stores only a Windows DPAPI-encrypted blob. Removing a hot wallet also removes its protected secret key after explicit confirmation.
+Use **Add wallet** in the sender selector for either wallet type. A connected Ledger supplies its public address and derivation path automatically. For a hot wallet, the app derives the public address from the entered secret key, sends the key once through the narrow preload API to the Electron main process, and stores only an Electron `safeStorage`-encrypted blob. Removing a hot wallet also removes its encrypted secret key after explicit confirmation.
 
 ## Development
 

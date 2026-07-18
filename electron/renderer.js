@@ -192,7 +192,7 @@ function renderProfiles() {
     button.className = `sender-card${profile.id === state.selectedProfileId ? ' selected' : ''}`;
     const title = document.createElement('strong'); title.textContent = profile.name;
     const detail = document.createElement('span'); detail.className = profile.configured && profile.signerReady ? 'ready' : '';
-    detail.textContent = profile.kind === 'ledger' ? 'Hardware wallet · Ready' : `${profile.protection || 'Windows DPAPI'} · Ready`;
+    detail.textContent = profile.kind === 'ledger' ? 'Hardware wallet · Ready' : `${profile.protection || 'Secure storage'} · Ready`;
     button.append(title, detail); button.addEventListener('click', () => selectProfile(profile.id)); els.senderGrid.appendChild(button);
   }
   const add = document.createElement('button'); add.type = 'button'; add.className = 'sender-card add-wallet-card';
@@ -529,7 +529,7 @@ for (const button of [els.closeSettings, els.cancelSettings]) button.addEventLis
 els.copySender.addEventListener('click', async () => { const value = selectedProfile()?.address; if (value) await navigator.clipboard.writeText(value); });
 els.removeWallet.addEventListener('click', async () => {
   const wallet = selectedProfile();
-  if (!wallet || state.busy || !window.confirm(`Remove ${wallet.name}?${wallet.kind === 'hot-wallet' ? ' Its DPAPI-protected secret key will also be deleted.' : ''}`)) return;
+  if (!wallet || state.busy || !window.confirm(`Remove ${wallet.name}?${wallet.kind === 'hot-wallet' ? ' Its encrypted secret key will also be deleted.' : ''}`)) return;
   const result = await window.batchSender.removeWallet(wallet.id, true);
   if (!result?.ok) { els.status.textContent = result?.message || 'Wallet could not be removed.'; return; }
   applyState(result); state.balances = []; renderProfiles(); renderBalances(); updateActions();

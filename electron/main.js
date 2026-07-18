@@ -111,7 +111,7 @@ async function getAephiaStatus(force = false) {
     const token = await readAephiaKey(app.getPath('userData'), safeStorage);
     if (!token) throw new Error('Aephia API key is required.');
     await validateAephiaKey(token);
-    aephiaValidation = { configured: true, valid: true, protection: 'Windows DPAPI', checkedAt: Date.now(), message: '' };
+    aephiaValidation = { configured: true, valid: true, protection: 'Secure storage', checkedAt: Date.now(), message: '' };
   } catch (error) {
     aephiaValidation = {
       configured: !String(error?.message || '').includes('is required'),
