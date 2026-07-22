@@ -251,7 +251,13 @@ function renderBalances() {
       groupRow.className = 'group-row';
       const cell = document.createElement('td');
       cell.colSpan = 3;
-      cell.textContent = balance.group === 'raw' ? 'Raw materials' : 'Components';
+      cell.textContent = ({
+        raw: 'Raw materials',
+        components: 'Components',
+        'crew-packs': 'Crew packs',
+        ships: 'Ships',
+        'ship-parts': 'Ship parts',
+      })[balance.group] || balance.group;
       groupRow.appendChild(cell);
       els.tokenRows.appendChild(groupRow);
     }
