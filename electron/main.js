@@ -24,6 +24,7 @@ const {
 } = require('../lib/local-store');
 const { planBatchTransactions } = require('../lib/planner');
 const { getSenderProfile } = require('../lib/profiles');
+const { buildWindowsInstallerScript } = require('../lib/updater');
 
 const APP_NAME = 'Batch Sender';
 const PREVIEW_TTL_MS = 5 * 60 * 1000;
@@ -175,22 +176,16 @@ async function installUpdate() {
   }
 
   if (process.platform === 'win32') {
-    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    await runCommand('npm', ['ci'], sourcePath, 10 * 60 * 1000);
     const scriptPath = path.join(stagingPath, 'install-update.ps1');
-    const script = [
-      "$ErrorActionPreference = 'Stop'",
-      'Start-Sleep -Seconds 2',
-      `$source = ${quote(sourcePath)}`,
-      `$destination = ${quote(APP_ROOT)}`,
-      `$staging = ${quote(stagingPath)}`,
-      'Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $destination -Recurse -Force',
-      'Set-Location -LiteralPath $destination',
-      '& npm.cmd ci',
-      'if ($LASTEXITCODE -ne 0) { & npm.cmd install }',
-      "if ($LASTEXITCODE -ne 0) { throw 'npm dependency installation failed.' }",
-      "Start-Process -FilePath 'npm.cmd' -ArgumentList 'start' -WorkingDirectory $destination -WindowStyle Hidden",
-      'Remove-Item -LiteralPath $staging -Recurse -Force',
-    ].join('\r\n');
+    const script = buildWindowsInstallerScript({
+      sourcePath,
+      destinationPath: APP_ROOT,
+      stagingPath,
+      logPath: path.join(app.getPath('userData'), 'updater.log'),
+      parentPid: process.pid,
+      expectedVersion: String(sourcePackage.version),
+    });
     await fs.writeFile(scriptPath, script, 'utf8');
     const helper = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
       cwd: stagingPath,
