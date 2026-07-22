@@ -7,8 +7,8 @@ appDirectory = fileSystem.GetParentFolderName(WScript.ScriptFullName)
 desktopDirectory = shell.SpecialFolders("Desktop")
 
 Set shortcut = shell.CreateShortcut(fileSystem.BuildPath(desktopDirectory, "Batch Sender.lnk"))
-shortcut.TargetPath = shell.ExpandEnvironmentStrings("%SystemRoot%\System32\wscript.exe")
-shortcut.Arguments = """" & fileSystem.BuildPath(appDirectory, "launch-batch-sender.vbs") & """"
+shortcut.TargetPath = fileSystem.BuildPath(appDirectory, "node_modules\electron\dist\electron.exe")
+shortcut.Arguments = """" & appDirectory & """"
 shortcut.WorkingDirectory = appDirectory
 shortcut.IconLocation = fileSystem.BuildPath(appDirectory, "assets\batch-sender.ico") & ",0"
 shortcut.Description = "Aephia Batch Sender"

@@ -177,6 +177,13 @@ async function installUpdate() {
 
   if (process.platform === 'win32') {
     await runCommand('npm', ['ci'], sourcePath, 10 * 60 * 1000);
+    await runCommand('node', [path.join(sourcePath, 'node_modules', 'electron', 'install.js')], sourcePath, 10 * 60 * 1000);
+    const stagedElectronPath = path.join(sourcePath, 'node_modules', 'electron', 'dist', 'electron.exe');
+    try {
+      await fs.access(stagedElectronPath);
+    } catch {
+      throw new Error('Electron binary installation did not produce electron.exe.');
+    }
     const scriptPath = path.join(stagingPath, 'install-update.ps1');
     const script = buildWindowsInstallerScript({
       sourcePath,
